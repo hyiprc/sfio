@@ -141,3 +141,66 @@ class View(MultiFrames):
 
     def __len__(self):
         return len(self.frames)
+
+
+# -----------------------------------------------
+
+import numpy as np
+
+
+class Fortran_unformatted:
+    """Fortran unformatted binary format.
+
+    The file consists of blocks where each block
+    has the following structure::
+
+        4 bytes int32 delimiter    # block size
+        block                      # data
+        4 bytes int32 delimiter    # block size
+
+    """
+
+    def __init__(self, fpath, **kwargs):
+        # process args
+        kwargs.setdefault('mode', 'rb')
+        self.f = open(fpath, **kwargs)
+        self.fpath = fpath
+
+    def _get_block(self):
+        """Get the next block.
+
+        Returns:
+            A tuple containing::
+
+                Size (bytes), Content (a list of int32)
+        """
+        try:
+            self.Nblock += 1
+        except Exception:
+            self.Nblock = 0
+        size = np.dtype('int32').itemsize
+        m1 = int(np.fromfile(self.f, dtype='int32', count=1))
+        b = np.fromfile(
+            self.f, dtype=np.dtype('int32', m1), count=int(m1 / size)
+        )
+        m2 = int(np.fromfile(self.f, dtype='int32', count=1))
+        if m1 != m2:
+            # opening and ending delimiters are different
+            raise ValueError('error, start & end of block %d != %d' % (m1, m2))
+        logger.debug(f'\nb{self.Nblock} {m1}\n{b}')
+        return (m1, b)
+
+    def _put_block(self, dtype, alist):
+        """Write a list or array to a new block."""
+        b = np.array(alist, dtype=dtype)
+        m = np.array(b.size * np.dtype(dtype).itemsize, dtype='int32')
+        m.tofile(self.f)
+        b.tofile(self.f)
+        m.tofile(self.f)
+        return
+
+    def _to_str(self, m, b):
+        return b.view(np.dtype(f'S{m}'))[0].decode('utf-8')
+
+    def _to_float(self, m, b):
+        return b.view(np.dtype(f'float{m}'))
