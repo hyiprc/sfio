@@ -206,3 +206,9 @@ def ERROR(msg: str = 'no message specified', say=logger.error, **kwargs):
 def WARNING(msg: str = 'no message specified', say=logger.warning, **kwargs):
     kwargs['exit'] = False
     return ERROR(msg=msg, say=say, **kwargs)
+
+
+# -------------------------------------------------------------
+
+if '-m' not in sys.argv:
+    from .box import Box  # noqa: F401
