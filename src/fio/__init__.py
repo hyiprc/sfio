@@ -212,3 +212,35 @@ def WARNING(msg: str = 'no message specified', say=logger.warning, **kwargs):
 
 if '-m' not in sys.argv:
     from .box import Box  # noqa: F401
+
+from .supported_formats import available
+
+
+def init(name):
+    name = name.strip()
+    try:
+        info = available[name]
+    except KeyError:
+        ERROR(f"no file format named '{name}'", trace=1)
+    m = __import__(f'{rootname}.{info[0]}', fromlist=[''])
+    try:
+        return getattr(m, info[1])
+    except AttributeError:
+        return m
+
+
+def _filehandler(filepath, name=None):
+    if name is None:
+        suffixes = Path(filepath).suffixes
+        name = ''.join([_ for _ in suffixes if _ != '.gz'])
+    return init(name)
+
+
+def read(filepath, typ=None, **kwargs):
+    """read a file, detect file format by file extension"""
+    return _filehandler(filepath, typ).read(filepath, **kwargs)
+
+
+def write(filepath, data, typ=None, **kwargs):
+    """write a file, detect file format by file extension"""
+    return _filehandler(filepath, typ).write(filepath, data, **kwargs)
