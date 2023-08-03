@@ -217,10 +217,9 @@ from .supported_formats import available
 
 
 def init(name):
-    name = name.strip()
-    try:
-        info = available[name]
-    except KeyError:
+    name = name.strip().lower()
+    info = available.get(f'.{name}', available.get(name, None))
+    if info is None:
         ERROR(f"no file format named '{name}'", trace=1)
     m = __import__(f'{rootname}.{info[0]}', fromlist=[''])
     try:
@@ -236,11 +235,11 @@ def _filehandler(filepath, name=None):
     return init(name)
 
 
-def read(filepath, typ=None, **kwargs):
+def read(filepath, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
-    return _filehandler(filepath, typ).read(filepath, **kwargs)
+    return _filehandler(filepath, filetype).read(filepath, **kwargs)
 
 
-def write(filepath, data, typ=None, **kwargs):
+def write(filepath, data, filetype=None, **kwargs):
     """write a file, detect file format by file extension"""
-    return _filehandler(filepath, typ).write(filepath, data, **kwargs)
+    return _filehandler(filepath, filetype).write(filepath, data, **kwargs)
