@@ -30,6 +30,7 @@ classifiers = [
 dependencies = [
     "numpy",
     "pandas",
+    "pyarrow",
 ]
 
 [project.urls]
@@ -69,8 +70,7 @@ testpaths = [
 ]
 
 [tool.commitizen]
-name = "cz_conventional_commits"
-version = "0.0.0"
+version = "0.6.0"
 tag_format = "v$version"
 version_files = [
     "src/fio/VERSION",
