@@ -5,6 +5,7 @@ import sys
 from types import MappingProxyType
 
 import numpy as np
+import pyarrow as pa
 
 from . import ERROR, logger
 
@@ -86,6 +87,24 @@ class BoxInputDict(dict):
 
 
 class Box:
+    schema = pa.schema(
+        [
+            ('x0', pa.float32()),
+            ('y0', pa.float32()),
+            ('z0', pa.float32()),
+            ('lx', pa.float32()),
+            ('ly', pa.float32()),
+            ('lz', pa.float32()),
+            ('alpha', pa.float32()),
+            ('beta', pa.float32()),
+            ('gamma', pa.float32()),
+            ('allow_tilt', pa.bool_()),
+            ('bx', pa.string()),
+            ('by', pa.string()),
+            ('bz', pa.string()),
+        ]
+    )
+
     def __init__(self, inputdict: dict = {}):
         self.input = BoxInputDict(
             {
@@ -187,7 +206,7 @@ class Box:
 
     def _format_input(self, argv: str):
         if isinstance(argv, str):
-            argv = re.split(r'\s*,\s*|\s+', argv.strip())
+            argv = re.split(r'\s*,\s*|\s+', argv.replace('\n', ''))
         # check input length
         if len(argv) == 1:
             ERROR("Read Box from file is not yet implemented")  # TODO
