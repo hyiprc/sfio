@@ -11,6 +11,13 @@ def abspath(path):
     return Path(path).expanduser().resolve().absolute()
 
 
+def relpath(path, parent=Path.cwd()):
+    path, parent = Path(path), Path(parent)
+    if parent in path.parents or parent == path:
+        return path.relative_to(parent)
+    return path
+
+
 rootdir = abspath(inspect.getfile(__import__(rootname))).parent
 cwd = Path.cwd()  # launching directory
 swd = abspath(sys.path[0])  # script directory
@@ -22,6 +29,7 @@ interactive = hasattr(sys, 'ps1')
 
 
 # -------------------------------------------------------------
+
 
 import time
 
@@ -47,17 +55,20 @@ def timefmt(timestamp, utc=False, **kwargs):
 
 # -------------------------------------------------------------
 
+
 import logging
 import logging.handlers
 
-logger = logging.getLogger(rootname)
-logger.setLevel(logging.INFO)
-
-default_screen_level = logging.DEBUG
-default_logfile_level = logging.DEBUG + interactive * 999
-
 
 class FormatterIcon(logging.Formatter):
+    icons = {
+        logging.DEBUG: '🐛',
+        logging.INFO: 'ℹ️',
+        logging.WARNING: '⚠️',
+        logging.ERROR: '❗',
+        logging.CRITICAL: '🚨',
+    }
+
     def __init__(self, fmt, **kwargs):
         def add_icon(icon):
             with_icon = fmt.replace('%(icon)s', icon)
@@ -65,38 +76,36 @@ class FormatterIcon(logging.Formatter):
 
         _fmt = logging.Formatter
         self.formatter = _fmt(fmt)
-        self.formatters = {
-            logging.DEBUG: add_icon('🐛'),
-            logging.INFO: add_icon('ℹ️'),
-            logging.WARNING: add_icon('⚠️'),
-            logging.ERROR: add_icon('❗'),
-            logging.CRITICAL: add_icon('🚨'),
-        }
+        self.formatters = {k: add_icon(v) for k, v in self.icons.items()}
 
     def format(self, record):
         formatter = self.formatters.get(record.levelno, self.formatter)
         return formatter.format(record)
 
 
-screen = logging.StreamHandler()
-screen.setFormatter(FormatterIcon('%(icon)s%(levelname)s: %(message)s'))
-screen.setLevel(default_screen_level)
-logger.addHandler(screen)
+formatter_simple = FormatterIcon('%(icon)s%(levelname)s: %(message)s')
+formatter_detailed = FormatterIcon(
+    fmt='%(asctime)s.%(msecs)03d (%(processName)s, %(threadName)s) [%(levelname)s]: %(icon)s  %(message)s',
+    datefmt="%Y-%m-%d %Z %H:%M:%S",
+)
 
-logfile = logging.handlers.WatchedFileHandler(
-    cwd / f"{rootname}.log", delay=True
-)
-logfile.setFormatter(
-    FormatterIcon(
-        fmt='%(asctime)s.%(msecs)03d (%(processName)s, %(threadName)s) [%(levelname)s]: %(icon)s  %(message)s',
-        datefmt="%Y-%m-%d %Z %H:%M:%S",
-    )
-)
-logfile.setLevel(default_logfile_level)
+screen = logging.StreamHandler()
+screen.setFormatter(formatter_simple)
+screen.setLevel(logging.NOTSET)
+
+logfile_path = swd / f"{rootname}.log"
+logfile = logging.handlers.WatchedFileHandler(logfile_path, delay=True)
+logfile.setFormatter(formatter_detailed)
+logfile.setLevel(logging.NOTSET + interactive * 999)
+
+logger = logging.getLogger(rootname)
+logger.setLevel(logging.INFO)  # INFO, DEBUG for -v, NOTSET for -vv
+logger.addHandler(screen)
 logger.addHandler(logfile)
 
 
 # -------------------------------------------------------------
+
 
 import re
 import threading
@@ -110,25 +119,37 @@ def format_exception(e, s, tb):
 
     tb_exc = traceback.format_exception(e, s, tb)
     stack = traceback.format_stack()
-    trace_list = tb_exc[:1] + stack[:-1] + tb_exc[1:]
+    trace_list_all = tb_exc[:1] + stack[:-1] + tb_exc[1:]
 
-    _s = re.compile(f'File "/.*/src/{rootname}')
-    _dir = f'File \"{rootname}.rootdir'
-    trace_list = [_s.sub(_dir, s) for s in trace_list]
+    search = re.compile(f'File "/.*/src/{rootname}')
+    replace = f'File "{{{rootname}.rootdir}}'
+    exclude = re.compile(
+        '|'.join(
+            [
+                search.pattern + "/__init__.py" * (logger.level < 20),
+                'File "<.*>",',
+            ]
+        )
+    )
+    trace_list = [
+        search.sub(replace, s)
+        for s in trace_list_all
+        if logger.level <= 0 or exclude.search(s) is None
+    ]
     if trace_list:
         trace_list[-1] = trace_list[-1].rstrip()
 
     return trace_list
 
 
-def excepthook(e, s, tb, msg='uncaught exception'):
+def excepthook(e, s, tb, msg='uncaught exception', say=logger.error):
     trace_list = format_exception(e, s, tb)
-    if f" raise {e.__name__}" in trace_list[-2]:
-        msg = trace_list.pop(-1)
-        trace_list[-1] = trace_list[-1].rstrip()
-    trace_list.pop(1)  # exclude this function from trace
     trace_str = indent(''.join(trace_list), '  ')
-    logger.error(f"{msg}\n{trace_str}")
+    say(f"{msg}\n{trace_str}")
+    if screen.level > logging.CRITICAL and logfile.level <= logging.CRITICAL:
+        name = say.__name__.upper()
+        icon = FormatterIcon.icons.get(getattr(logging, name, None), '')
+        print(f'{icon}{name}: see {relpath(logfile.baseFilename)}')
 
 
 def thread_excepthook(t):
@@ -149,66 +170,37 @@ threading.excepthook = thread_excepthook  # for python>=3.8
 # -------------------------------------------------------------
 
 
-def ERROR(msg: str = 'no message specified', say=logger.error, **kwargs):
-    scn = bool(kwargs.get('screen', True))  # print on screen?
-    log = bool(kwargs.get('log', not interactive))  # record in log file?
-    seelog = bool(kwargs.get('seelog', log))
-
-    screen_on = default_screen_level + (not scn) * 999
-    logfile_on = default_logfile_level + (not log) * 999
-
+def ERROR(
+    msg: str = 'no message specified',
+    exception=RuntimeError,
+    exit=True,
+    say=logger.error,
+):
     # get traceback and stack
-    slic = slice(*kwargs.get('slic', (None, None)))
     e, s, tb = sys.exc_info()
-    trace_list = format_exception(e, s, tb)[slic]
-    trace_str = '\n' + indent(''.join(trace_list), '  ')
-
-    # turn on screen and logfile
-    screen.setLevel(screen_on)
-    logfile.setLevel(logfile_on)
-
-    # output messages
-    default_trace = int(not interactive) + 1
-    trace = int(kwargs.get('trace', default_trace))
-    # 0 = only msg, no exception/traceback/stack
-    # 1 = exception+traceback+stack
-    # 2 = exception on screen, exception+traceback+stack in log
-    if not trace_list or trace == 0:
-        say(msg)
-    elif trace == 2:
-        # screen
-        logfile.setLevel(999)  # off
-        say(f"{msg}\n{indent(trace_list[-1].rstrip(),'  ')}")
-        if log and seelog:
-            print(f'  see {logfile.baseFilename}')
-        # logfile
-        screen.setLevel(999)  # off
-        logfile.setLevel(logfile_on)
-        say(f"{msg}{trace_str}")
-    else:
-        say(f"{msg}{trace_str}")
-
-    # reset screen and logfile
-    screen.setLevel(default_screen_level)
-    logfile.setLevel(default_logfile_level)
+    if e is None:
+        try:
+            raise exception(msg)
+        except Exception:
+            (e, s, tb), msg = sys.exc_info(), ''
+    excepthook(e, s, tb, msg=msg, say=say)
 
     # exit?
-    if bool(kwargs.get('exit', True)):
-        if interactive:
-            sys.excepthook = sys.__excepthook__
-            sys.tracebacklimit = 0
-            raise KeyboardInterrupt
-        else:
-            raise SystemExit(1)
+    if exit and interactive:
+        sys.excepthook = sys.__excepthook__
+        sys.tracebacklimit = 0
+        raise KeyboardInterrupt
+    elif exit:
+        raise SystemExit(1)
     return SystemExit
 
 
-def WARNING(msg: str = 'no message specified', say=logger.warning, **kwargs):
-    kwargs['exit'] = False
-    return ERROR(msg=msg, say=say, **kwargs)
+def WARNING(msg: str = 'no message specified', exception=RuntimeWarning):
+    return ERROR(msg, exception, exit=False, say=logger.warning)
 
 
 # -------------------------------------------------------------
+
 
 if '-m' not in sys.argv:
     from .box import Box  # noqa: F401
