@@ -233,7 +233,10 @@ def _filehandler(filepath, name=None):
 
 def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
-    return _filehandler(f, filetype).read(f, **kwargs)
+    File = _filehandler(f, filetype)
+    self = File(f, **kwargs)
+    self.scan()
+    return self
 
 
 def write(f, data, filetype=None, **kwargs):

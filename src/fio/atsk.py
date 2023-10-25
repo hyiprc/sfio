@@ -1,96 +1,124 @@
 __all__ = ['Atsk']
 
-import sys
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
-from . import ERROR, logger
-from .base import Fortran_unformatted, ReadOnly
+from . import ERROR
+from .base import Fortran_unformatted as fort
+from .base import ReadOnly, Sectioned
 from .box import Box
 
 
-class Atsk(ReadOnly):
-    """Atomsk binary format, temporary file use only"""
+class Atsk(ReadOnly, Sectioned):
+    """Atomsk binary format, temporary file use only
+    see atomsk repo:
+        src/output/out_atsk.f90
+        src/output/writeout.f90
+    """
 
-    def __init__(self, fpath):
-        self.fpath = Path(fpath)
-        logger.debug(f"file: {self.fpath}")
-        self.f = f = Fortran_unformatted(self.fpath)
+    identifier = '0.8 Atomsk binary file'
+    dtype = 'int32'
 
-        # check file format
-        identifier = '0.8 Atomsk binary file'
-        m, b = f._get_block()
-        if not f._to_str(m, b) == identifier.ljust(m):
-            ERROR(f'not {Atsk.identifier}')
+    def scan(self, size: int = -1):
+        with self.open() as fd:
+            fd.seek(0)  # rewind the file
 
-    # -----------------------------------------------
+            # check file header
+            self.start_section('header')
+            m, b = fort.get_block(fd, self.dtype)
+            if not fort.to_str(m, b) == self.identifier.ljust(m):
+                ERROR(f'not {self.identifier}')
+            _, N = fort.get_block(fd, self.dtype)
+            self.scanned = fd.tell()
+            self.end_section('header')
 
-    def parse(self):
-        """
-        atomsk binary format
-        (see atomsk repo: src/output/out_atsk.f90)
-        """
+            # file sections
+            for name, num_blocks, exist in [
+                ('box', 1, True),
+                ('atoms', 1, N[0]),
+                ('ionic_shells', 1, N[1]),
+                ('properties', 2, N[2]),
+                ('comments', 1, N[4]),
+            ]:
+                if bool(exist):
+                    self.start_section(name)
+                    for _ in range(num_blocks):
+                        fort.get_block(fd, self.dtype)
+                    self.scanned = fd.tell()
+                    if self.scanned >= size > 0:
+                        return
+                    self.end_section(name)
 
-        f = self.f
-        to_str = f._to_str
-        to_float = f._to_float
+    def parse(self, section, dtype='dict'):
+        with self.open() as fd:
+            fd.seek(section.start_byte)
+            m, b = fort.get_block(fd, self.dtype)
 
-        attrs = {}
+            if section.name == 'header':
+                _, N = fort.get_block(fd, self.dtype)
+                # output
+                out = {
+                    'identifier': fort.to_str(m, b).strip(),
+                    'num_atoms': N[0],
+                    'num_ionic_shells': N[1],
+                    'num_property_entries': N[2],
+                    'num_properties': N[3],
+                    'num_comments': N[4],
+                }
+                if dtype == 'df':
+                    return pd.Series(out)
+                return out
 
-        # (see output/writeout.f90)
-        _, (Nxyz, Nshell, Naux, Nauxname, Ncomment) = f._get_block()
-        logger.debug(f"{Nxyz:9d} coordinates")
-        logger.debug(
-            f"{Nshell:9d} ionic shells (positions for core/shell model)"
-        )
-        logger.debug(
-            "\n{Nauxname:9d} auxilary properties (velocity, forces, etc.)\n"
-        )
-        logger.debug(f"{Naux:9d} entries in each property")
-        logger.debug(f"{Ncomment:9d} comments")
+            elif section.name == 'box':
+                box_input = np.round(fort.to_float(64, b).reshape(3, 3).T, 6)
+                box = Box()
+                box.set_input(box_input, typ='basis')
+                # output
+                if dtype == 'obj':
+                    return box
+                out = {**box.input}
+                if dtype == 'df':
+                    return pd.Series(out)
+                return out
 
-        cell = np.round(to_float(64, f._get_block()[1]).reshape(3, 3).T, 6)
-        attrs['box'] = box = Box()
-        box.set_input(cell, typ='basis')
-        logger.debug(f"\ncell vectors:\n{box.output['v']}")
+            elif section.name == 'atoms':
+                atoms = fort.to_float(64, b).reshape(4, -1).T
+                # output
+                out = {
+                    'x': atoms[:, 0],
+                    'y': atoms[:, 1],
+                    'z': atoms[:, 2],
+                    'atomic_number': atoms[:, 3].astype(np.int8),
+                }
+                if dtype == 'df':
+                    return pd.DataFrame(out)
+                return out
 
-        xyza = to_float(64, f._get_block()[1]).reshape(4, -1).T
-        df = pd.DataFrame(
-            xyza, columns=['x', 'y', 'z', 'atomic_number']
-        ).astype({'atomic_number': 'uint32'})
-        logger.debug("\ncoordinates, atomic number:")
-        logger.debug(df)
+            elif section.name == 'ionic_shells':
+                # positions for core/shell model
+                shells = fort.to_float(64, b).reshape(4, -1).T
+                # output
+                out = {
+                    'position': shells[:, 0],
+                    'number1': shells[:, 1],
+                    'number2': shells[:, 2],
+                    'number3': shells[:, 3],
+                }
+                if dtype == 'df':
+                    return pd.DataFrame(out)
+                return out
 
-        if Nshell > 0:
-            shell = to_float(64, f._get_block()[1]).reshape(4, -1).T
-            attrs['ionic_shells'] = pd.DataFrame(
-                shell, columns=['position', 'number1', 'number2', 'number3']
-            )
-            logger.debug("ionic shell position, number:")
-            logger.debug(attrs['ionic_shells'])
+            elif section.name == 'properties':
+                # auxilary properties (velocity, forces, etc.)
+                props = fort.to_str(m, b).split()
+                P = fort.to_float(64, fort.get_block(fd, self.dtype)[1])
+                values = P.reshape(len(props), -1).T
+                # output
+                out = {prop: values[:, i] for i, prop in enumerate(props)}
+                if dtype == 'df':
+                    return pd.DataFrame(out)
+                return out
 
-        if Naux > 0:
-            prop_name = to_str(*f._get_block()).split()
-            prop = to_float(64, f._get_block()[1]).reshape(Nauxname, -1).T
-            attrs['properties'] = pd.DataFrame(prop, columns=prop_name)
-            logger.debug(f"\nproperties:\n{attrs['properties']}")
-
-        if Ncomment > 0:
-            m, b = f._get_block()
-            temp = to_str(m, b).rstrip()
-            attrs['comments'] = temp
-            logger.debug(f"\ncomments:\n{temp}")
-
-        df.attrs.update(attrs)
-
-        return df
-
-    # -----------------------------------------------
-
-
-if __name__ == '__main__':
-    df = Atsk.read(sys.argv[1])
-    print(df)
-    print(df.attrs)
+            elif section.name == 'comments':
+                # output
+                return {'comments': fort.to_str(m, b).rstrip()}
