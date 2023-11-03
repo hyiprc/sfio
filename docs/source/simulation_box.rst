@@ -88,7 +88,7 @@ the ``box.output`` attribute:
 
 .. code-block:: python
 
-    >>> print(box.input)
+    >>> print(box.output)
     {
       'x0': 0.0, 'y0': 0.0, 'z0': 0.0,
       'lx': 1.0, 'ly': 1.0, 'lz': 1.0,
