@@ -119,25 +119,26 @@ class Lmpdump(ReadWrite, MultiFrames):
                 logger.info(f'Skip writing, found "{fpath}"')
                 return 0
 
-        f = cls.open(fpath, 'ab')
-
         # multiple frames?
-        if isinstance(data, __class__):
-            Nfr = len(data)
-        else:
-            Nfr = 1
+        def get_df():
+            if isinstance(data, __class__):
+                for fr in data.section('frame'):
+                    yield fr.df
+            else:
+                yield data
 
         # start writing
-        for fr in range(Nfr):
-            df = data[fr]
 
+        f = cls(fpath, mode='wb').open()
+
+        for df in get_df():
             # header
             timestep = df.attrs.get('timestep', 0)
             f.write(f"ITEM: TIMESTEP\n{timestep}\n".encode())
             f.write(f"ITEM: NUMBER OF ATOMS\n{df.shape[0]}\n".encode())
 
             # box
-            box = df.attrs['box'].output
+            box = Box(df.attrs['box']).output
             bxbybz = ' '.join([box.get(f'b{s}', 'ff') for s in 'xyz'])
 
             if box.get('allow_tilt', True):
@@ -157,4 +158,4 @@ class Lmpdump(ReadWrite, MultiFrames):
 
         f.close()
 
-        return os.stats(fpath).st_size
+        return os.stat(fpath).st_size
