@@ -40,36 +40,34 @@ class Lmpdump(ReadWrite, MultiFrames):
 
     def parse(self, section, dtype='dict'):
         if section.name == 'frame':
-            out = self.parse(section.section('header'))
-            out.update(
+            output = self.parse(section.section('header'))
+            output.update(
                 {
                     sect: self.parse(section.section(sect))
                     for sect in ['box', 'atoms']
                 }
             )
             # output
-            if dtype == 'df':
-                df = pd.DataFrame(out.pop('atoms'))
-                df.attrs.update(out)
+            if dtype == 'dict':
+                return output
+            elif dtype == 'df':
+                df = pd.DataFrame(output.pop('atoms'))
+                df.attrs.update(output)
                 return df
-            return out
 
         # ----------------------------------------------
-        f = section.f
 
         if section.name == 'header':
-            out = {}
+            f = section.f
+            output = {}
             for line in f:
                 if line.startswith(b'ITEM: TIMESTEP'):
-                    out['timestep'] = int(f.readline())
+                    output['timestep'] = int(f.readline())
                 elif line.startswith(b'ITEM: NUMBER OF ATOMS'):
-                    out['num_atoms'] = int(f.readline())
-            # output
-            if dtype == 'df':
-                return pd.Series(out)
-            return out
+                    output['num_atoms'] = int(f.readline())
 
         elif section.name == 'box':
+            f = section.f
             line = f.readline()
             box = Box()
             boundaries = line.decode().split()[-3:]
@@ -83,10 +81,7 @@ class Lmpdump(ReadWrite, MultiFrames):
             # output
             if dtype == 'obj':
                 return box
-            out = {**box.input}
-            if dtype == 'df':
-                return pd.Series(out)
-            return out
+            output = {**box.input}
 
         elif section.name == 'atoms':
             # read column labels
@@ -98,11 +93,16 @@ class Lmpdump(ReadWrite, MultiFrames):
                 section.f, sep=r'\s+', header=1, names=col_labels
             )
             atoms.sort_index(inplace=True)
-            # output
-            out = {k: atoms[k].values for k in col_labels}
-            if dtype == 'df':
-                return pd.DataFrame(out)
-            return out
+            output = {k: atoms[k].values for k in col_labels}
+
+        # output
+        if dtype == 'dict':
+            return output
+        elif dtype == 'df':
+            try:
+                return pd.DataFrame(output)
+            except ValueError:
+                return pd.Series(output)
 
     # -----------------------------------------------
 

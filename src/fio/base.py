@@ -118,7 +118,11 @@ class Section:
         return self.file.parse(self, dtype)
 
     def __getattr__(self, dtype):
-        return self.parse(dtype)
+        output = self.parse(dtype)
+        if output is None:
+            err_msg = f"cannot cast '{self.name}' section to '{dtype}'"
+            ERROR(err_msg, AttributeError)
+        return output
 
 
 class Sections(list):

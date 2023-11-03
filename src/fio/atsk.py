@@ -56,8 +56,7 @@ class Atsk(ReadOnly, Sectioned):
 
             if section.name == 'header':
                 _, N = fort.get_block(fd, self.dtype)
-                # output
-                out = {
+                output = {
                     'identifier': fort.to_str(m, b).strip(),
                     'num_atoms': N[0],
                     'num_ionic_shells': N[1],
@@ -65,9 +64,6 @@ class Atsk(ReadOnly, Sectioned):
                     'num_properties': N[3],
                     'num_comments': N[4],
                 }
-                if dtype == 'df':
-                    return pd.Series(out)
-                return out
 
             elif section.name == 'box':
                 box_input = np.round(fort.to_float(64, b).reshape(3, 3).T, 6)
@@ -76,49 +72,42 @@ class Atsk(ReadOnly, Sectioned):
                 # output
                 if dtype == 'obj':
                     return box
-                out = {**box.input}
-                if dtype == 'df':
-                    return pd.Series(out)
-                return out
+                output = {**box.input}
 
             elif section.name == 'atoms':
                 atoms = fort.to_float(64, b).reshape(4, -1).T
-                # output
-                out = {
+                output = {
                     'x': atoms[:, 0],
                     'y': atoms[:, 1],
                     'z': atoms[:, 2],
                     'atomic_number': atoms[:, 3].astype(np.int8),
                 }
-                if dtype == 'df':
-                    return pd.DataFrame(out)
-                return out
 
             elif section.name == 'ionic_shells':
                 # positions for core/shell model
                 shells = fort.to_float(64, b).reshape(4, -1).T
-                # output
-                out = {
+                output = {
                     'position': shells[:, 0],
                     'number1': shells[:, 1],
                     'number2': shells[:, 2],
                     'number3': shells[:, 3],
                 }
-                if dtype == 'df':
-                    return pd.DataFrame(out)
-                return out
 
             elif section.name == 'properties':
                 # auxilary properties (velocity, forces, etc.)
                 props = fort.to_str(m, b).split()
                 P = fort.to_float(64, fort.get_block(fd, self.dtype)[1])
                 values = P.reshape(len(props), -1).T
-                # output
-                out = {prop: values[:, i] for i, prop in enumerate(props)}
-                if dtype == 'df':
-                    return pd.DataFrame(out)
-                return out
+                output = {prop: values[:, i] for i, prop in enumerate(props)}
 
             elif section.name == 'comments':
-                # output
-                return {'comments': fort.to_str(m, b).rstrip()}
+                output = {'comments': fort.to_str(m, b).rstrip()}
+
+            # output
+            if dtype == 'dict':
+                return output
+            elif dtype == 'df':
+                try:
+                    return pd.DataFrame(output)
+                except ValueError:
+                    return pd.Series(output)
