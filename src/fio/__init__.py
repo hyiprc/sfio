@@ -206,6 +206,7 @@ if '-m' not in sys.argv:
     from .box import Box  # noqa: F401
 
 import io
+import json
 
 from .supported_formats import available
 
@@ -235,7 +236,17 @@ def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
     File = _filehandler(f, filetype)
     self = File(f, **kwargs)
+    # try to load file cache
+    fcache = Path(f).with_name(f'_{Path(f).name}.cache')
+    try:
+        cache = json.load(open(fcache))
+        self.sections.update(cache['sections'])
+        self.scanned = cache['scanned']
+    except Exception:
+        pass
+    # scan sections and write cache
     self.scan()
+    json.dump(self.cache, open(fcache, 'w'))
     return self
 
 

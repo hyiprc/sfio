@@ -28,6 +28,10 @@ class File(abc.ABC):
         else:
             self.opener = io.FileIO
 
+    @property
+    def cache(self):
+        return {k: getattr(self, k) for k in ['scanned', 'sections']}
+
     def __repr__(self):
         base_name = self.__class__.__name__
         return f"<{base_name} File at {hex(id(self))}>"
