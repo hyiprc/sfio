@@ -24,5 +24,7 @@ Dev installation
 .. code-block:: console
 
     $ which python  # confirm the location
+    $ git clone https://github.com/hyiprc/fio.git
+    $ cd fio
     $ python -m pip install -e .[dev]
     $ pre-commit install
