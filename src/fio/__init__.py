@@ -246,7 +246,8 @@ def read(f, filetype=None, **kwargs):
         pass
     # scan sections and write cache
     self.scan()
-    json.dump(self.cache, open(fcache, 'w'))
+    if getattr(self, 'allow_cache', True):
+        json.dump(self.cache, open(fcache, 'w'))
     return self
 
 

@@ -18,6 +18,7 @@ class Atsk(ReadOnly, Sectioned):
 
     identifier = '0.8 Atomsk binary file'
     dtype = 'int32'
+    allow_cache = False
 
     def scan(self, size: int = -1):
         with self.open() as fd:
