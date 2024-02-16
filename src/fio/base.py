@@ -170,18 +170,16 @@ class Sectioned(abc.ABC):
     """Provide functions to mark and locate section of a File."""
 
     def end_section(self, name: str):
-        """Mark the end of a Section.
-        Call this first if the Section starts and ends on the same line.
-        """
-        if self.sections.get(name, []):
-            self.sections[name].append(self.scanned)
+        """Mark the end of a Section."""
+        section = self.sections.get(name, [])
+        if len(section) % 2 == 1 and self.scanned > section[-1]:
+            section.append(self.scanned)
 
     def start_section(self, name: str):
-        """Mark the beginning of a Section.
-        Call end_section() first if the Section starts and ends on the same line.
-        """
-        self.sections.setdefault(name, [])
-        self.sections[name].append(self.scanned)
+        """Mark the beginning of a Section."""
+        section = self.sections.setdefault(name, [])
+        if len(section) % 2 == 0 and self.scanned > (section or [-1])[-1]:
+            section.append(self.scanned)
 
     def section(self, name: str, instance: int = None):
         """Get section of a File."""
