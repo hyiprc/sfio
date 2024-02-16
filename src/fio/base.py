@@ -208,7 +208,9 @@ class Sectioned(abc.ABC):
             _sect = File.sections[name]
         except KeyError:
             allkeys = list(File.sections.keys())
-            ERROR(f"section '{name}' not in {allkeys}", KeyError)
+            ERROR(
+                f"section '{name}' not found, choose from {allkeys}", KeyError
+            )
         # add EOF to incomplete section
         if len(_sect) % 2:
             _sect = _sect.copy() + [File.scanned]
