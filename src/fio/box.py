@@ -206,7 +206,7 @@ class Box:
 
     def _format_input(self, argv: str):
         if isinstance(argv, str):
-            argv = re.split(r'\s*,\s*|\s+', argv.replace('\n', ''))
+            argv = re.split(r'\s*,\s*|\s+', argv.strip().replace('\n', ''))
         # check input length
         if len(argv) == 1:
             ERROR("Read Box from file is not yet implemented")  # TODO
