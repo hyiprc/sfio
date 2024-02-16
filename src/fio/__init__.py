@@ -240,8 +240,8 @@ def read(f, filetype=None, **kwargs):
     fcache = Path(f).with_name(f'_{Path(f).name}.cache')
     try:
         cache = json.load(open(fcache))
-        self.sections.update(cache['sections'])
-        self.scanned = cache['scanned']
+        self.sections.update(cache.get('sections', {}))
+        self.scanned = cache.get('scanned', 0)
     except Exception:
         pass
     # scan sections and write cache
