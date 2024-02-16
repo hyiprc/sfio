@@ -4,4 +4,5 @@ available = {
     'lmplog': ('lmplog', '', 'ro'),  # LAMMPS log file
     '.dump': ('lmpdump', 'Lmpdump', 'rw'),  # LAMMPS dump file
     '.atsk': ('atsk', 'Atsk', 'ro'),  # Atomsk temporary file
+    '.psf': ('psf', 'Psf', 'ro'),
 }
