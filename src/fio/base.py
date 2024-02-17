@@ -178,7 +178,7 @@ class Sectioned(abc.ABC):
     def start_section(self, name: str):
         """Mark the beginning of a Section."""
         section = self.sections.setdefault(name, [])
-        if len(section) % 2 == 0 and self.scanned > (section or [-1])[-1]:
+        if len(section) % 2 == 0 and self.scanned >= (section or [0])[-1]:
             section.append(self.scanned)
 
     def section(self, name: str, instance: int = None):
@@ -283,9 +283,9 @@ class Fortran_unformatted:
         """
         size = np.dtype(dtype).itemsize
 
-        m1 = int(np.fromfile(fh, dtype=dtype, count=1))
+        m1 = int(np.squeeze(np.fromfile(fh, dtype=dtype, count=1)))
         b = np.fromfile(fh, dtype=np.dtype(dtype, m1), count=int(m1 / size))
-        m2 = np.fromfile(fh, dtype=dtype, count=1)
+        m2 = int(np.squeeze(np.fromfile(fh, dtype=dtype, count=1)))
 
         if m1 != m2:
             # opening and ending delimiters are different
