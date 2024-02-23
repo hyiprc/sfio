@@ -215,7 +215,7 @@ def init(name: str):
     name = name.strip().lower()
     info = available.get(f'.{name}', available.get(name, None))
     if info is None:
-        ERROR(f"no file format named '{name}'", trace=1)
+        ERROR(f"file format '{name}' is not supported")
     m = __import__(f'{rootname}.{info[0]}', fromlist=[''])
     try:
         return getattr(m, info[1])

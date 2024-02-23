@@ -197,7 +197,7 @@ class Box:
 
     def _guess_type(self, argv):
         if argv is None:
-            raise ERROR('Missing Box input parameters', trace=0)
+            raise ERROR('Missing Box input parameters')
         elif len(argv) == 9:
             if argv[0] < argv[1] and argv[2] < argv[3] and argv[4] < argv[5]:
                 return 'lmpdata'
@@ -211,7 +211,7 @@ class Box:
             else:
                 return 'lattice'
         else:
-            raise ERROR('Incorrect Box input parameters', trace=0)
+            raise ERROR('Incorrect Box input parameters')
 
     def set_input(self, argv, typ=None):
         data = self._format_input(argv)
