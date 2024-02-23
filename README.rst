@@ -25,8 +25,8 @@ To update or reinstall,
     python -m pip install --force-reinstall --no-deps git+https://github.com/hyiprc/fio.git
 
 
-Dev installation
-----------------
+Developer installation
+----------------------
 
 .. code-block:: console
 
