@@ -245,8 +245,10 @@ def read(f, filetype=None, **kwargs):
     except Exception:
         pass
     # scan sections and write cache
+    t0 = timestamp()
     self.scan()
-    if getattr(self, 'allow_cache', True):
+    time_elapsed = timestamp() - t0
+    if time_elapsed > 8 and getattr(self, 'allow_cache', True):
         json.dump(self.cache, open(fcache, 'w'))
     return self
 
