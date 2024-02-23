@@ -16,13 +16,13 @@ Quick installation
 
 .. code-block:: console
 
-    $ python -m pip install git+https://github.com/hyiprc/fio.git
+    python -m pip install git+https://github.com/hyiprc/fio.git
 
 To update or reinstall,
 
 .. code-block:: console
 
-    $ python -m pip install --force-reinstall --no-deps git+https://github.com/hyiprc/fio.git
+    python -m pip install --force-reinstall --no-deps git+https://github.com/hyiprc/fio.git
 
 
 Dev installation
