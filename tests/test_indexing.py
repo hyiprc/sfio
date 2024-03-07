@@ -1,13 +1,13 @@
 import pytest
 
-import fio
-import fio.base
+import sfio
+import sfio.base
 
-fio.logger.level = 999
+sfio.logger.level = 999
 
 
 def test_indexing():
-    get_index = fio.base.Sectioned.get_index
+    get_index = sfio.base.Sectioned.get_index
     length = 100
 
     with pytest.raises(SystemExit):

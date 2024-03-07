@@ -1,8 +1,8 @@
 import pytest
 
-import fio
+import sfio
 
-template = fio.rootdir / 'data'
+template = sfio.rootdir / 'data'
 sample_files = [
     'gold_fcc.dump',
     'gold_fcc.dump.gz',
@@ -19,12 +19,12 @@ def tmp_dir(tmp_path_factory):
 def test_readwrite(tmp_dir):
     for fname in sample_files:
         # read
-        f = fio.read(template / fname)
+        f = sfio.read(template / fname)
         # write
-        if isinstance(f, fio.base.ReadWrite):
-            fio.write(tmp_dir / fname, f)
+        if isinstance(f, sfio.base.ReadWrite):
+            sfio.write(tmp_dir / fname, f)
             # read the written file
-            fio.read(tmp_dir / fname)
+            sfio.read(tmp_dir / fname)
 
 
 def test_lmpdump_slicing():
@@ -34,7 +34,7 @@ def test_lmpdump_slicing():
         except AttributeError:
             return [frame.df.attrs['timestep'] for frame in frames]
 
-    f = fio.read(template / 'gold_fcc.dump')
+    f = sfio.read(template / 'gold_fcc.dump')
 
     Nfr = len(f)
     assert Nfr == 4

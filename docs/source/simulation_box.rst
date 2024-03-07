@@ -4,13 +4,13 @@ Simulation box
 The ``Box`` module defines and converts between different simulation
 `box representations <#supported-box-types>`_.
 
-A simulation ``box`` instance is initialized using the ``fio.Box``
+A simulation ``box`` instance is initialized using the ``sfio.Box``
 class.
 
 .. code-block:: python
 
-    >>> import fio
-    >>> box = fio.Box()
+    >>> import sfio
+    >>> box = sfio.Box()
 
 ``box`` contains information that can be accessed using dictionary
 keys. A subset of keys (*a.k.a.*, `input parameters
@@ -206,7 +206,7 @@ Command line
 
 .. code-block:: console
 
-    $ python -m fio.box [input_values]
+    $ python -m sfio.box [input_values]
 
 Other box functions
 -------------------

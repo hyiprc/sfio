@@ -1,8 +1,8 @@
 import pytest
 
-import fio
+import sfio
 
-box = fio.Box()
+box = sfio.Box()
 
 
 def test_input_assignment():

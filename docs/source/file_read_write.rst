@@ -6,10 +6,10 @@ Reading
 
 .. code-block:: python
 
-    >>> import fio
+    >>> import sfio
 
     # File type is detected by the file extension if not specified
-    >>> f = fio.read(fio.rootdir / 'data/gold_fcc.dump', 'lmpdump')
+    >>> f = sfio.read(sfio.rootdir / 'data/gold_fcc.dump', 'lmpdump')
 
 Writing
 -------
@@ -17,7 +17,7 @@ Writing
 .. code-block:: python
 
     # File type is detected by the file extension if not specified
-    >>> fio.write('gold_fcc_copy.dump', f, 'lmpdump')
+    >>> sfio.write('gold_fcc_copy.dump', f, 'lmpdump')
 
 Processing
 ----------

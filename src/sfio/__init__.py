@@ -1,6 +1,6 @@
 __all__ = []
 
-rootname = "fio"
+rootname = "sfio"
 
 import inspect
 import sys

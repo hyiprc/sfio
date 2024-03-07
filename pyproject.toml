@@ -6,13 +6,13 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"fio.data" = ["*"]
+"sfio.data" = ["*"]
 
 [tool.setuptools.dynamic]
-version = {file = "src/fio/VERSION"}
+version = {file = "src/sfio/VERSION"}
 
 [project]
-name = "fio"
+name = "sfio"
 dynamic = ["version"]
 authors = [
     {name = "Henry Chan", email = "hyiprc@gmail.com"},
@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/hyiprc/fio"
+Repository = "https://github.com/hyiprc/sfio"
 
 [project.optional-dependencies]
 dev = [
@@ -73,5 +73,5 @@ testpaths = [
 version = "0.6.0"
 tag_format = "v$version"
 version_files = [
-    "src/fio/VERSION",
+    "src/sfio/VERSION",
 ]
