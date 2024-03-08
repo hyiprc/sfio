@@ -61,6 +61,11 @@ class File(abc.ABC):
         # parse section of a file
         pass
 
+    def __getattr__(self, dtype):
+        if 'file' in self.sections:
+            return self.parse(self.section('file'), dtype)
+        ERROR(f"File has no attribute '{dtype}'. {self}", AttributeError)
+
 
 class ReadOnly(File):
     @classmethod

@@ -1,10 +1,12 @@
-__all__ = ['read']
+__all__ = ['Lmplog']
 
 import numpy as np
+import pandas as pd
 
 from . import WARNING
+from .base import ReadOnly, Sectioned
 
-alias = {
+thermo_alias = {
     'tpcpu': 't/cpu',
     'spcpu': 's/cpu',
     'cpuremain': 'cpuleft',
@@ -26,7 +28,7 @@ alias = {
     'dihedrals': 'diheds',
     'impropers': 'impros',
 }
-ialias = {alias[k]: k for k in alias}
+ialias = {v: k for k, v in thermo_alias.items()}
 
 inttyp = [
     'step',
@@ -109,6 +111,14 @@ units_convert = {
     },
 }
 
+blank_output = {
+    'dataline': '',
+    'units': 'metal',
+    '_key': [],
+    **{k: 0 for k in ['_', 'n', 'Nrun', 'Nmin', 'Neq']},
+    **{k: [] for k in ['ix_min', 'ix_eq', 'key']},
+}
+
 
 def update_data(output):
     if output['dataline'].strip() == '':
@@ -184,13 +194,7 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
     line = line.rstrip().replace('\t', ' ')
 
     if line.startswith('LAMMPS '):
-        self.data['dataline'] = ''
-        self.data['units'] = 'metal'
-        self.data['_key'] = []
-        for s in ['_', 'n', 'Nrun', 'Nmin', 'Neq']:
-            self.data[s] = 0
-        for s in ['ix_min', 'ix_eq', 'key']:
-            self.data[s] = []
+        self.data = blank_output
 
     elif line.startswith('units '):
         self.data['units'] = u = line.split()[1]
@@ -206,7 +210,6 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
         self.data['_'] = -1
         return
     elif line.startswith('run '):
-        print(line)
         try:
             self.data['Nrun'] += int(line.split()[1])
         except Exception:
@@ -276,20 +279,39 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
     update_data(self.data)
 
 
-def read(filename, to_metal=True):
-    class tmpobj:
-        data = {}
+class Lmplog(ReadOnly, Sectioned):
+    """LAMMPS log file"""
 
-    tmpobj.data['dataline'] = ''
-    tmpobj.data['units'] = 'metal'
-    tmpobj.data['_key'] = []
-    for s in ['_', 'n', 'Nrun', 'Nmin', 'Neq']:
-        tmpobj.data[s] = 0
-    for s in ['ix_min', 'ix_eq', 'key']:
-        tmpobj.data[s] = []
+    def scan(self, size: int = -1):
+        self.scanned = 0
+        self.start_section('file')
+        self.scanned = self.open().seek(0, 2)
 
-    with open(filename, 'r') as f:
-        for line in f:
-            parse_stream(self=tmpobj, line=line, to_metal=to_metal)
+    def parse(self, section, dtype='dict'):
+        if section.name == 'file':
+            self.data = blank_output
 
-    return tmpobj.data
+            for line in section.f:
+                parse_stream(self, line.decode(), to_metal=False)
+
+            outkeys = ['run_type'] + self.data['key']
+            output = {k: self.data.get(k, []) for k in outkeys}
+
+            # mark each step as minimization or equilibration
+            output['run_type'] = [''] * self.data['n']
+            for s in ['min', 'eq']:
+                for i0, i1 in self.data[f'ix_{s}']:
+                    for i in range(i0, i1 + 1):
+                        output['run_type'][i] = s
+
+            # metadata
+            metadata = {'units': self.data['units']}
+
+            # output
+            if dtype == 'dict':
+                output.update(metadata)
+                return output
+            elif dtype == 'df':
+                df = pd.DataFrame(output, columns=outkeys)
+                df.attrs.update(metadata)
+                return df
