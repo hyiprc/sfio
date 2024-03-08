@@ -188,6 +188,8 @@ class Sectioned(abc.ABC):
 
     def start_section(self, name: str):
         """Mark the beginning of a Section."""
+        if name is None:
+            return
         section = self.sections.setdefault(name, [])
         if len(section) % 2 == 0 and self.scanned >= (section or [0])[-1]:
             section.append(self.scanned)

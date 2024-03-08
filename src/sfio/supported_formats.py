@@ -7,5 +7,6 @@ available = {
     '.data': ('lmpdata', 'Lmpdata', 'ro'),  # LAMMPS data file
     '.dump': ('lmpdump', 'Lmpdump', 'rw'),  # LAMMPS dump file
     '.atsk': ('atsk', 'Atsk', 'ro'),  # Atomsk temporary file
-    '.psf': ('psf', 'Psf', 'ro'),
+    '.psf': ('psf', 'Psf', 'ro'),  # X-PLOR Protein Structure file
+    '.pdb': ('pdb', 'Pdb', 'ro'),  # Protein Data Bank file
 }
