@@ -22,6 +22,7 @@ class File(abc.ABC):
         self.sections = {}  # sections and byte positions
         self.name = name
         self.kwargs = kwargs
+        self.type = self.__class__.__name__
         # handle compressed file
         if not isinstance(name, int) and Path(name).suffix == ".gz":
             self.opener = gzip.open
@@ -33,8 +34,13 @@ class File(abc.ABC):
         return {k: getattr(self, k) for k in ['scanned', 'sections']}
 
     def __repr__(self):
-        base_name = self.__class__.__name__
-        return f"<{base_name} File at {hex(id(self))}>"
+        try:
+            Nfr = f", {len(self)} frames"
+        except TypeError:
+            Nfr = ""
+        sect = list(self.sections.keys())
+        sections = f". File.sections = {sect}." if sect else ""
+        return f"<{self.type} File at {hex(id(self))}{Nfr}>{sections}"
 
     def __iter__(self):
         with self.open() as f:
