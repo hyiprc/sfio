@@ -10,7 +10,15 @@ from .box import Box
 
 def flatten(iterable):
     """flatten deeply nested iterables"""
-    iterator = iter(iterable)
+    # return item if one item only
+    try:
+        if isinstance(iterable, (str, bytes)):
+            raise TypeError
+        iterator = iter(iterable)
+    except TypeError:
+        yield iterable
+        return
+    # multiple items, loop through them
     while True:
         try:
             i = next(iterator)

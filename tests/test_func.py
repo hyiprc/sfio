@@ -17,6 +17,14 @@ import sfio.func as func
         # deep nesting
         ([1, [1], [[[1]]], [2, [2], [[2]]]], [1, 1, 1, 2, 2, 2]),
         ([((((4,),),),), [5, [6, 7, (8, 9)]]], [4, 5, 6, 7, 8, 9]),
+        # single item
+        (1, [1]),
+        (1.1, [1.1]),
+        (b'abc', [b'abc']),
+        ('abc', ['abc']),
+        (None, [None]),
+        (True, [True]),
+        (range(3), [0, 1, 2]),
     ],
 )
 def test_flatten(inputs, expected_output):
