@@ -211,7 +211,7 @@ import json
 from .supported_formats import available
 
 
-def init(name: str):
+def _fileclass(name: str):
     name = name.strip().lower()
     info = available.get(f'.{name}', available.get(name, None))
     if info is None:
@@ -229,13 +229,17 @@ def _filehandler(filepath, name=None):
     if name is None:
         suffixes = Path(filepath).suffixes
         name = ''.join([_ for _ in suffixes if _ != '.gz'])
-    return init(name)
+    return _fileclass(name)
+
+
+def init(f, filetype=None, **kwargs):
+    File = _filehandler(f, filetype)
+    return File(f, **kwargs)
 
 
 def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
-    File = _filehandler(f, filetype)
-    self = File(f, **kwargs)
+    self = init(f, filetype, **kwargs)
     # try to load file cache
     fcache = Path(f).with_name(f'_{Path(f).name}.cache')
     try:
