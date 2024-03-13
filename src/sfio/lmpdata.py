@@ -1,14 +1,31 @@
 __all__ = ['Lmpdata']
 
+from pathlib import Path
+from typing import Union
+
 import pandas as pd
 
-from . import logger
+from . import func, logger
 from .base import ReadOnly, Sectioned
 from .box import Box
 
 
 class Lmpdata(ReadOnly, Sectioned):
     """LAMMPS data file, see bottom of this file for file formats"""
+
+    file_sections = [
+        # required, section_name, start, end
+        (1, 'header', None),
+        (1, 'box', b' xlo xhi'),
+        (0, 'masses', b'Masses'),
+        (0, 'coeffs', b'Coeffs'),
+        (1, 'atoms', b'Atoms'),
+        (0, 'velocities', b'Velocities'),
+        (0, 'bonds', b'Bonds'),
+        (0, 'angles', b'Angles'),
+        (0, 'dihedrals', b'Dihedrals'),
+        (0, 'impropers', b'Impropers'),
+    ]
 
     sect_basic = ['header', 'masses', 'atoms', 'velocities']
     sect_topo = ['bonds', 'angles', 'dihedrals', 'impropers']
@@ -98,42 +115,61 @@ class Lmpdata(ReadOnly, Sectioned):
             'atoms_wfmt': {k: wfmt[k] for k in atom_columns[style]},
         }
 
-    def scan(self, size: int = -1):
-        sections = [
-            # required?, section, pattern
-            (1, 'header', None),
-            (1, 'box', b' xlo xhi'),
-            (0, 'masses', b'Masses'),
-            (0, 'coeffs', b'Coeffs'),
-            (1, 'atoms', b'Atoms'),
-            (0, 'velocities', b'Velocities'),
-            (0, 'bonds', b'Bonds'),
-            (0, 'angles', b'Angles'),
-            (0, 'dihedrals', b'Dihedrals'),
-            (0, 'impropers', b'Impropers'),
-        ]
-
+    def scan_byline(self, size: int = -1):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
             if not self.scanned:
                 self.start_section('header')
 
+            file_sections = self.file_sections.copy()
+
             for line in fd:
                 if self.scanned >= size > 0:
                     break
 
-                for i, (required, sect, pattern) in enumerate(sections[1:]):
+                for i, (req, sect, pattern) in enumerate(file_sections[1:]):
                     if pattern is not None and pattern in line:
-                        for _, prev_sect, _ in sections[: i + 1]:
+                        for _, prev_sect, _ in file_sections[: i + 1]:
                             self.end_section(prev_sect)
-                            sections.pop(0)
+                            file_sections.pop(0)
                         self.start_section(sect)
                         break
-                    if required and sect not in self.sections:
+                    if req and sect not in self.sections:
                         break
 
                 self.scanned = fd.tell()
+
+    def scan_bychunk(self, size: int = -1):
+        with self.open() as fd:
+            fd.seek(self.scanned)  # resume from last read
+
+            if not self.scanned:
+                self.start_section('header')
+
+            # search patterns up to a required section
+            _, sects, starts = zip(*self.file_sections)
+            patterns = list(dict.fromkeys(starts))
+            bytelocs = func.search_in_file(fd, patterns, self.scanned)
+            scanned = fd.tell()
+
+            # lookup tables
+            matches = dict(zip(patterns, bytelocs))
+
+            # mark start and end of the sections
+            for i, (req, sect, start) in enumerate(self.file_sections):
+                if start is None:
+                    continue
+                for b0 in matches[start]:
+                    self.scanned = b0
+                    for _, prev_sect, _ in self.file_sections[: i + 1]:
+                        self.end_section(prev_sect)
+                    self.start_section(sect)
+            self.scanned = scanned
+
+    def scan(self, size: int = -1, method='chunk'):
+        logger.debug(f"Scan {self.type} file using '{method}' method.")
+        return getattr(self, f"scan_by{method}")(size=size)
 
     def parse(self, section, dtype='dict'):
         def loop_lines(f, skip=0):
@@ -187,7 +223,10 @@ class Lmpdata(ReadOnly, Sectioned):
             col_labels = self.style['atoms_cols']
             # read atoms and create dataframe
             atoms = pd.read_csv(
-                section.f, sep=r'\s+', header=0, names=col_labels
+                section.f,
+                sep=r'\s+',
+                header=0,
+                names=col_labels,
             )
             atoms.sort_index(inplace=True)
             output = {k: atoms[k].values for k in col_labels}
@@ -195,7 +234,10 @@ class Lmpdata(ReadOnly, Sectioned):
         elif section.name == 'velocities':
             col_labels = ['id', 'vx', 'vy', 'vz']
             velocities = pd.read_csv(
-                section.f, sep=r'\s+', header=0, names=col_labels
+                section.f,
+                sep=r'\s+',
+                header=0,
+                names=col_labels,
             )
             velocities.sort_index(inplace=True)
             output = {k: velocities[k].values for k in col_labels}
@@ -206,7 +248,10 @@ class Lmpdata(ReadOnly, Sectioned):
             col_labels = ['id', 'type'] + [f'atom-{i+1}' for i in range(N)]
             # read bonds/angles/dihedrals/impropers and create dataframe
             topos = pd.read_csv(
-                section.f, sep=r'\s+', header=0, names=col_labels
+                section.f,
+                sep=r'\s+',
+                header=0,
+                names=col_labels,
             )
             topos.sort_index(inplace=True)
             output = {k: topos[k].values for k in col_labels}

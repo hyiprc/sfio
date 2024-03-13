@@ -1,12 +1,13 @@
 __all__ = ['Lmpdump']
 
 import os
+from itertools import zip_longest
 from pathlib import Path
 from typing import Union
 
 import pandas as pd
 
-from . import logger
+from . import func, logger
 from .base import MultiFrames, ReadWrite
 from .box import Box
 
@@ -14,7 +15,15 @@ from .box import Box
 class Lmpdump(ReadWrite, MultiFrames):
     """LAMMPS dump file, snapshots of atoms and various per-atom values"""
 
-    def scan(self, size: int = -1):
+    file_sections = [
+        # required, section_name, start, end
+        (1, 'frame', b'ITEM: TIMESTEP', b'ITEM: TIMESTEP'),
+        (1, 'header', b'ITEM: TIMESTEP', b'ITEM: BOX BOUNDS'),
+        (1, 'box', b'ITEM: BOX BOUNDS', b'ITEM: ATOMS'),
+        (1, 'atoms', b'ITEM: ATOMS', b'ITEM: TIMESTEP'),
+    ]
+
+    def scan_byline(self, size: int = -1):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
@@ -37,6 +46,35 @@ class Lmpdump(ReadWrite, MultiFrames):
                     self.start_section('atoms')
 
                 self.scanned = fd.tell()
+
+    def scan_bychunk(self, size: int = -1):
+        with self.open() as fd:
+            fd.seek(self.scanned)  # resume from last read
+
+            # search for all start/end markers
+            _, sects, starts, ends = zip(*self.file_sections)
+            patterns = list(dict.fromkeys(starts + ends))
+            bytelocs = func.search_in_file(fd, patterns, self.scanned)
+            scanned = fd.tell()
+
+            # lookup tables
+            matches = dict(zip(patterns, bytelocs))
+
+            # mark start and end of the sections
+            for i, (req, sect, start, end) in enumerate(self.file_sections):
+                for b0, b1 in zip_longest(matches[start], matches[end]):
+                    self.scanned = b1
+                    self.end_section(sect)
+                    self.scanned = b0
+                    self.start_section(sect)
+                    self.scanned = b1
+                    self.end_section(sect)
+
+            self.scanned = scanned
+
+    def scan(self, size: int = -1, method='chunk'):
+        logger.debug(f"Scan {self.type} file using '{method}' method.")
+        return getattr(self, f"scan_by{method}")(size=size)
 
     def parse(self, section, dtype='dict'):
         if section.name == 'frame':
@@ -90,7 +128,10 @@ class Lmpdump(ReadWrite, MultiFrames):
                 break
             # read atoms and create dataframe
             atoms = pd.read_csv(
-                section.f, sep=r'\s+', header=1, names=col_labels
+                section.f,
+                sep=r'\s+',
+                header=1,
+                names=col_labels,
             )
             atoms.sort_index(inplace=True)
             output = {k: atoms[k].values for k in col_labels}
