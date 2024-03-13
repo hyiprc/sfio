@@ -282,7 +282,7 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
 class Lmplog(ReadOnly, Sectioned):
     """LAMMPS log file"""
 
-    def scan(self, size: int = -1):
+    def scan(self):
         self.scanned = 0
         self.start_section('file')
         self.scanned = self.open().seek(0, 2)

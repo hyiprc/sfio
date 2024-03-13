@@ -20,7 +20,7 @@ class Atsk(ReadOnly, Sectioned):
     dtype = 'int32'
     allow_cache = False
 
-    def scan(self, size: int = -1):
+    def scan(self):
         with self.open() as fd:
             fd.seek(0)  # rewind the file
 
@@ -46,8 +46,6 @@ class Atsk(ReadOnly, Sectioned):
                     for _ in range(num_blocks):
                         fort.get_block(fd, self.dtype)
                     self.scanned = fd.tell()
-                    if self.scanned >= size > 0:
-                        return
                     self.end_section(name)
 
     def parse(self, section, dtype='dict'):

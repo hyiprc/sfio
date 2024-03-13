@@ -1,4 +1,4 @@
-__all__ = ['Pdb']
+_all__ = ['Pdb']
 
 import numpy as np
 import pandas as pd
@@ -46,14 +46,11 @@ section_name = {
 class Pdb(ReadOnly, Sectioned):
     """Protein Data Bank Files"""
 
-    def scan(self, size: int = -1):
+    def scan(self):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
             for line in fd:
-                if self.scanned >= size > 0:
-                    break
-
                 record = line.split(None, 1)[0]
                 sect = section_name.get(record, None)
 

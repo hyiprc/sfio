@@ -1,8 +1,5 @@
 __all__ = ['Lmpdata']
 
-from pathlib import Path
-from typing import Union
-
 import pandas as pd
 
 from . import func, logger
@@ -115,7 +112,7 @@ class Lmpdata(ReadOnly, Sectioned):
             'atoms_wfmt': {k: wfmt[k] for k in atom_columns[style]},
         }
 
-    def scan_byline(self, size: int = -1):
+    def scan_byline(self):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
@@ -125,9 +122,6 @@ class Lmpdata(ReadOnly, Sectioned):
             file_sections = self.file_sections.copy()
 
             for line in fd:
-                if self.scanned >= size > 0:
-                    break
-
                 for i, (req, sect, pattern) in enumerate(file_sections[1:]):
                     if pattern is not None and pattern in line:
                         for _, prev_sect, _ in file_sections[: i + 1]:
@@ -140,7 +134,7 @@ class Lmpdata(ReadOnly, Sectioned):
 
                 self.scanned = fd.tell()
 
-    def scan_bychunk(self, size: int = -1):
+    def scan_bychunk(self):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
@@ -167,9 +161,9 @@ class Lmpdata(ReadOnly, Sectioned):
                     self.start_section(sect)
             self.scanned = scanned
 
-    def scan(self, size: int = -1, method='chunk'):
+    def scan(self, method='chunk'):
         logger.debug(f"Scan {self.type} file using '{method}' method.")
-        return getattr(self, f"scan_by{method}")(size=size)
+        return getattr(self, f"scan_by{method}")()
 
     def parse(self, section, dtype='dict'):
         def loop_lines(f, skip=0):

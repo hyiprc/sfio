@@ -52,7 +52,7 @@ class File(abc.ABC):
         return self.opener(self.name, **self.kwargs)
 
     @abc.abstractmethod
-    def scan(self, size: int = -1):
+    def scan(self):
         # quick scan a file (lazy loading)
         pass
 

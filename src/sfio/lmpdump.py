@@ -23,15 +23,12 @@ class Lmpdump(ReadWrite, MultiFrames):
         (1, 'atoms', b'ITEM: ATOMS', b'ITEM: TIMESTEP'),
     ]
 
-    def scan_byline(self, size: int = -1):
+    def scan_byline(self):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
             for line in fd:
-                if self.scanned >= size > 0:
-                    break
-
-                elif line.startswith(b'ITEM: TIMESTEP'):
+                if line.startswith(b'ITEM: TIMESTEP'):
                     self.end_section('frame')
                     self.end_section('atoms')
                     self.start_section('frame')
@@ -47,7 +44,7 @@ class Lmpdump(ReadWrite, MultiFrames):
 
                 self.scanned = fd.tell()
 
-    def scan_bychunk(self, size: int = -1):
+    def scan_bychunk(self):
         with self.open() as fd:
             fd.seek(self.scanned)  # resume from last read
 
@@ -72,9 +69,9 @@ class Lmpdump(ReadWrite, MultiFrames):
 
             self.scanned = scanned
 
-    def scan(self, size: int = -1, method='chunk'):
+    def scan(self, method='chunk'):
         logger.debug(f"Scan {self.type} file using '{method}' method.")
-        return getattr(self, f"scan_by{method}")(size=size)
+        return getattr(self, f"scan_by{method}")()
 
     def parse(self, section, dtype='dict'):
         if section.name == 'frame':

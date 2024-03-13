@@ -10,7 +10,7 @@ class Psf(ReadOnly, Sectioned):
 
     sect_topo = ['bonds', 'angles', 'dihedrals', 'impropers']
 
-    def scan(self, size: int = -1):
+    def scan(self):
         sections = [
             # required?, section, pattern
             (1, 'header', 'PSF'),
@@ -31,9 +31,6 @@ class Psf(ReadOnly, Sectioned):
                 self.start_section('header')
 
             for line in fd:
-                if self.scanned >= size > 0:
-                    break
-
                 for i, (required, sect, pattern) in enumerate(sections[1:]):
                     if pattern is not None and pattern in line:
                         for _, prev_sect, _ in sections[: i + 1]:
