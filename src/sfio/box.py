@@ -8,6 +8,7 @@ import numpy as np
 import pyarrow as pa
 
 from . import ERROR, logger
+from .func.box import BoxFunc as AddFunc
 
 
 def normalize(a, order=2, axis=-1):
@@ -68,7 +69,7 @@ class BoxInputDict(dict):
                 self.__dict__['allow_tilt'] = True
 
 
-class Box:
+class Box(AddFunc):
     schema = pa.schema(
         [
             ('x0', pa.float32()),

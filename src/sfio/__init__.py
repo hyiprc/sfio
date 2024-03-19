@@ -208,6 +208,7 @@ if '-m' not in sys.argv:
 import io
 import json
 
+from . import func  # noqa: F401
 from .supported_formats import available
 
 
