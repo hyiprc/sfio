@@ -20,6 +20,7 @@ class File(abc.ABC):
     def __init__(self, name, **kwargs):
         self.scanned = 0  # number of bytes already scanned
         self.sections = {}  # sections and byte positions
+        self.allow_cache = True
         self.name = name
         self.kwargs = kwargs
         self.type = self.__class__.__name__
