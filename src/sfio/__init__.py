@@ -247,6 +247,7 @@ def read(f, filetype=None, **kwargs):
         cache = json.load(open(fcache))
         self.sections.update(cache.get('sections', {}))
         self.scanned = cache.get('scanned', 0)
+        logger.info(f"skipped file scan, read from cache '{fcache.name}'")
     except Exception:
         pass
     # scan sections and write cache
@@ -254,6 +255,10 @@ def read(f, filetype=None, **kwargs):
     self.scan()
     time_elapsed = timestamp() - t0
     if time_elapsed > 8 and getattr(self, 'allow_cache', True):
+        logger.info(
+            f"file reading took {time_elapsed:.1f}s"
+            f", write cache '{fcache.name}'"
+        )
         json.dump(self.cache, open(fcache, 'w'))
     return self
 
