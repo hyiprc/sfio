@@ -108,7 +108,6 @@ logger.addHandler(logfile)
 
 
 import threading
-from textwrap import indent
 
 
 def _format_exception(e, s, tb):
@@ -143,6 +142,8 @@ def _format_exception(e, s, tb):
 
 
 def excepthook(e, s, tb, msg='uncaught exception', say=logger.error):
+    from textwrap import indent
+
     if e is KeyboardInterrupt:
         return
     trace_list = _format_exception(e, s, tb)
@@ -205,9 +206,6 @@ def WARNING(msg: str = 'no message specified', exception=RuntimeWarning):
 if '-m' not in sys.argv:
     from .box import Box  # noqa: F401
 
-import io
-import json
-
 from . import func  # noqa: F401
 from .supported_formats import available
 
@@ -225,6 +223,8 @@ def _fileclass(name: str):
 
 
 def _filehandler(filepath, name=None):
+    import io
+
     if isinstance(filepath, io.IOBase):
         filepath = filepath.name
     if name is None:
@@ -240,6 +240,8 @@ def init(f, filetype=None, **kwargs):
 
 def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
+    import json
+
     self = init(f, filetype, **kwargs)
     # try to load file cache
     fcache = Path(f).with_name(f'_{Path(f).name}.cache')
