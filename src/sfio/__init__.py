@@ -107,13 +107,14 @@ logger.addHandler(logfile)
 # -------------------------------------------------------------
 
 
-import re
 import threading
-import traceback
 from textwrap import indent
 
 
-def format_exception(e, s, tb):
+def _format_exception(e, s, tb):
+    import re
+    import traceback
+
     if e is None:
         return []
 
@@ -122,20 +123,19 @@ def format_exception(e, s, tb):
     trace_list_all = tb_exc[:1] + stack[:-1] + tb_exc[1:]
 
     search = re.compile(f'File "/.*/src/{rootname}')
-    replace = f'File "{{{rootname}.rootdir}}'
-    exclude = re.compile(
-        '|'.join(
-            [
-                search.pattern + "/__init__.py" * (logger.level < 20),
-                'File "<.*>",',
-            ]
-        )
-    )
+    replacement = f'File "{{{rootname}.rootdir}}'
+    selfstr = r'__init__.py", line \d+, in (ERROR|WARNING|excepthook)'
+
+    exclude = re.compile('|'.join([search.pattern, 'File "<.*>",']))
+    always_exclude = re.compile(selfstr)
+
     trace_list = [
-        search.sub(replace, s)
+        search.sub(replacement, s)
         for s in trace_list_all
-        if logger.level <= 0 or exclude.search(s) is None
+        if (logger.level <= 0 or exclude.search(s) is None)
+        and always_exclude.search(s) is None
     ]
+
     if trace_list:
         trace_list[-1] = trace_list[-1].rstrip()
 
@@ -143,7 +143,9 @@ def format_exception(e, s, tb):
 
 
 def excepthook(e, s, tb, msg='uncaught exception', say=logger.error):
-    trace_list = format_exception(e, s, tb)
+    if e is KeyboardInterrupt:
+        return
+    trace_list = _format_exception(e, s, tb)
     trace_str = indent(''.join(trace_list), '  ')
     say(f"{msg}\n{trace_str}")
     if screen.level > logging.CRITICAL and logfile.level <= logging.CRITICAL:
@@ -153,7 +155,7 @@ def excepthook(e, s, tb, msg='uncaught exception', say=logger.error):
 
 
 def thread_excepthook(t):
-    if t.exc_type == SystemExit:
+    if t.exc_type is SystemExit:
         return
     excepthook(
         t.exc_type,
@@ -163,7 +165,7 @@ def thread_excepthook(t):
     )
 
 
-sys.excepthook = excepthook
+sys.excepthook = excepthook  # = sys.__excepthook__ to reset
 threading.excepthook = thread_excepthook  # for python>=3.8
 
 
@@ -187,8 +189,6 @@ def ERROR(
 
     # exit?
     if exit and interactive:
-        sys.excepthook = sys.__excepthook__
-        sys.tracebacklimit = 0
         raise KeyboardInterrupt
     elif exit:
         raise SystemExit(1)
@@ -216,7 +216,7 @@ def _fileclass(name: str):
     name = name.strip().lower()
     info = available.get(f'.{name}', available.get(name, None))
     if info is None:
-        ERROR(f"file format '{name}' is not supported")
+        ERROR(f"unknown filetype '{name}'")
     m = __import__(f'{rootname}.{info[0]}', fromlist=[''])
     try:
         return getattr(m, info[1])
