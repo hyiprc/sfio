@@ -1,4 +1,13 @@
-__all__ = []
+__all__ = [
+    '__version__',
+    'logger',
+    'ERROR',
+    'WARNING',
+    'cls',
+    'file',
+    'read',
+    'write',
+]
 
 rootname = "sfio"
 
@@ -210,7 +219,7 @@ from . import func  # noqa: F401
 from .supported_formats import available
 
 
-def _fileclass(name: str):
+def cls(name: str):
     name = name.strip().lower()
     info = available.get(f'.{name}', available.get(name, None))
     if info is None:
@@ -230,19 +239,19 @@ def _filehandler(filepath, name=None):
     if name is None:
         suffixes = Path(filepath).suffixes
         name = ''.join([_ for _ in suffixes if _ != '.gz'])
-    return _fileclass(name)
+    return cls(name)
 
 
-def init(f, filetype=None, **kwargs):
-    File = _filehandler(f, filetype)
-    return File(f, **kwargs)
+def file(f, filetype=None, **kwargs):
+    FileType = _filehandler(f, filetype)
+    return FileType(f, **kwargs)
 
 
 def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
     import json
 
-    self = init(f, filetype, **kwargs)
+    self = file(f, filetype, **kwargs)
     # try to load file cache
     fcache = Path(f).with_name(f'_{Path(f).name}.cache')
     try:

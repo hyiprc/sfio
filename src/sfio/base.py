@@ -4,6 +4,8 @@ __all__ = [
     'Sectioned',
     'MultiFrames',
     'Fortran_unformatted',
+    'File',
+    'Section',
 ]
 
 import abc
@@ -70,8 +72,8 @@ class File(abc.ABC):
 
 class ReadOnly(File):
     @classmethod
-    def write(cls, fpath, data, **kwargs):
-        raise NotImplementedError(f"{cls.__name__} file format is ReadOnly")
+    def write(cls, *args, **kwargs):
+        ERROR(f"{cls.__name__} file format is ReadOnly", NotImplementedError)
 
 
 class ReadWrite(File):
@@ -146,8 +148,9 @@ class Sections(list):
         def validate(item):
             if isinstance(item, Section):
                 return item
-            raise TypeError(
-                f"Section object expected, got {type(item).__name__}"
+            ERROR(
+                f"Section object expected, got {type(item).__name__}",
+                TypeError,
             )
 
         super().__init__(validate(item) for item in iterable)
@@ -305,7 +308,7 @@ class Fortran_unformatted:
 
         if m1 != m2:
             # opening and ending delimiters are different
-            raise ValueError('start & end of block %d != %d' % (m1, m2))
+            ERROR('start & end of block %d != %d' % (m1, m2), ValueError)
         logger.debug(f'block_size {m1} bytes')
 
         return (m1, b)
