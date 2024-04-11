@@ -264,7 +264,7 @@ class Sectioned(abc.ABC):
 class MultiFrames(Sectioned):
     def __len__(self):
         # total num of frames
-        return int(0.5 * (len(self.sections['frame']) + 1))
+        return int(0.5 * (len(self.sections.get('frame', [])) + 1))
 
     def __getitem__(self, indexing):
         frames = self.section('frame')
