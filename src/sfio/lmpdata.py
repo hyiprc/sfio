@@ -29,6 +29,9 @@ class Lmpdata(ReadOnly, Sectioned):
 
     @property
     def style(self):
+        if not hasattr(self, '_style'):
+            line = next(self.section('atoms').f).strip()
+            self.style = line.decode().split('# ')[:2][-1]
         return self._style
 
     @style.setter
@@ -67,16 +70,16 @@ class Lmpdata(ReadOnly, Sectioned):
             return alist[:pos] + item + alist[pos:]
 
         # define atom columns
-        cols_atomic = ['id', 'type', 'x', 'y', 'z']
-        cols_molecular = insert(cols_atomic, ['mol'], 1)
-        cols_charge = insert(cols_atomic, ['q'], 2)
+        cols_atomic = ['type', 'x', 'y', 'z']
+        cols_molecular = insert(cols_atomic, ['mol'], 0)
+        cols_charge = insert(cols_atomic, ['q'], 1)
         atom_columns = {
             'atomic': cols_atomic,
-            'full': insert(cols_molecular, ['q'], 3),
+            'full': insert(cols_molecular, ['q'], 2),
             'charge': cols_charge,
             'dipole': cols_charge + ['mux', 'muy', 'muz'],
-            'sphere': insert(cols_atomic, ['diameter'], 2),
-            'ellipsoid': insert(cols_atomic, ['ellipsoidflag', 'density'], 2),
+            'sphere': insert(cols_atomic, ['diameter'], 1),
+            'ellipsoid': insert(cols_atomic, ['ellipsoidflag', 'density'], 1),
             **{
                 k: cols_molecular
                 for k in ['molecular', 'angle', 'bond', 'dihedral']
