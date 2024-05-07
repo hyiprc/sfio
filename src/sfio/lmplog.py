@@ -1,5 +1,7 @@
 __all__ = ['Lmplog']
 
+import copy
+
 import numpy as np
 import pandas as pd
 
@@ -180,7 +182,7 @@ def update_data(output):
         output[f'N{me}'] = sum(
             [
                 output['step'][n[1]] - output['step'][n[0]]
-                if not n[1] is None
+                if n and n[1] is not None
                 else 0
                 for n in output[f'ix_{me}']
             ]
@@ -194,7 +196,7 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
     line = line.rstrip().replace('\t', ' ')
 
     if line.startswith('LAMMPS '):
-        self.data = blank_output
+        self.data = copy.deepcopy(blank_output)
 
     elif line.startswith('units '):
         self.data['units'] = u = line.split()[1]
@@ -289,7 +291,7 @@ class Lmplog(ReadOnly, Sectioned):
 
     def parse(self, section, dtype='dict'):
         if section.name == 'file':
-            self.data = blank_output
+            self.data = copy.deepcopy(blank_output)
 
             for line in section.f:
                 parse_stream(self, line.decode(), to_metal=False)
