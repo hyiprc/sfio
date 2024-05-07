@@ -5,6 +5,10 @@ from itertools import chain
 
 
 def flatten(iterable):
+    return list(_flatten(iterable))
+
+
+def _flatten(iterable):
     """flatten deeply nested iterables"""
     # return item if one item only
     try:
