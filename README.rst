@@ -10,6 +10,8 @@ Key Features
 
 + **File Parsing and Data Type Casting:** Provides a Slicing/indexing mechanism for multi-frames (trajectory) file types. Parsing sections in a file and cast them into different data types. <https://github.com/hyiprc/sfio/blob/main/docs/source/file_read_write.rst>
 
++ **JSON/YAML data serialization:** Encode/decode numpy.ndarray and selected Python objects to/from data URLs.
+
 
 Quick installation
 ------------------
