@@ -2,7 +2,6 @@ __all__ = ['Lmpdump']
 
 import os
 from itertools import zip_longest
-from pathlib import Path
 from typing import Union
 
 import pandas as pd
@@ -148,15 +147,6 @@ class Lmpdump(ReadWrite, MultiFrames):
     def write(
         cls, fpath, data: Union[pd.DataFrame, '__class__'], overwrite=False
     ):
-        fpath = Path(fpath)
-
-        # check if fpath exists
-        if not overwrite and fpath.exists():
-            answer = input(f'Overwrite "{fpath}"? [y/N]')
-            if not answer.lower() == 'y':
-                logger.info(f'Skip writing, found "{fpath}"')
-                return 0
-
         # multiple frames?
         def get_df():
             if isinstance(data, __class__):
