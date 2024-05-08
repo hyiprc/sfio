@@ -9,4 +9,6 @@ available = {
     '.atsk': ('atsk', 'Atsk', 'ro'),  # Atomsk temporary file
     '.psf': ('psf', 'Psf', 'ro'),  # X-PLOR Protein Structure file
     '.pdb': ('pdb', 'Pdb', 'ro'),  # Protein Data Bank file
+    '.json': ('json', 'Json', 'rw'),  # JavaScript Object Notation
+    '.yaml': ('yaml', 'Yaml', 'rw'),  # YAML Ain’t Markup Language
 }

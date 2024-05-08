@@ -251,6 +251,8 @@ def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
     import json
 
+    from .base import Sectioned
+
     self = file(f, filetype, **kwargs)
     # try to load file cache
     fcache = Path(f).with_name(f'_{Path(f).name}.cache')
@@ -271,9 +273,30 @@ def read(f, filetype=None, **kwargs):
             f", write cache '{fcache.name}'"
         )
         json.dump(self.cache, open(fcache, 'w'))
+    # parse file if no sections
+    if not issubclass(self.__class__, Sectioned):
+        return self.parse('file')
     return self
 
 
-def write(f, data, filetype=None, **kwargs):
+def write(f, data, filetype=None, overwrite=False, **kwargs):
     """write a file, detect file format by file extension"""
-    return _filehandler(f, filetype).write(f, data, **kwargs)
+    from .base import File, ReadWrite, Section
+
+    fpath = Path(f)
+    FileType = _filehandler(fpath, filetype)
+    if issubclass(FileType, ReadWrite):
+        # overwrite prompt
+        if not overwrite and fpath.exists():
+            answer = input(f'Overwrite "{fpath}"? [y/N] ')
+            if not answer.lower() == 'y':
+                logger.info(f'Skip writing, found "{fpath}"')
+                return 0
+        # # check if there is data
+        # supported_data = [File, Section]
+        # print([dat for dat in data if dat in supported_data])
+        # data = [dat for dat in data if dat in supported_data]
+        if not data:
+            WARNING('no File or Section to write')
+            return 0
+    return FileType.write(fpath, data, **kwargs)
