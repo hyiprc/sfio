@@ -91,11 +91,17 @@ class Section:
     """section of a file, can be casted to different data types"""
 
     def __init__(
-        self, _File: File, start_byte: int, num_bytes: int, name: str = ''
+        self,
+        _File: File,
+        start_byte: int = 0,
+        num_bytes=float('inf'),
+        name: str = 'file',
     ):
         self.file = _File
-        self.start_byte = int(start_byte)
-        self.num_bytes = int(num_bytes)
+        max_byte = _File.open().seek(0, 2)
+        self.start_byte = Sectioned.get_index(start_byte, max_byte)
+        max_num_bytes = max(0, max_byte - self.start_byte)
+        self.num_bytes = int(max(0, min(num_bytes, max_num_bytes)))
         self.name = str(name)
 
     def __repr__(self):
@@ -212,13 +218,13 @@ class Sectioned(abc.ABC):
         """Check index, get positive index of negative indexing.
         right=True allows (index == length) and negative index right shift by 1
         """
-        ix = index - right * ((index >= 0) - (index == 0))
-        if abs(ix) - int(ix < 0) >= length + right * (index < 0):
+        ix = index - right * (int(index >= 0) - int(index == 0))
+        if abs(ix) - int(ix < 0) >= length + right * int(index < 0):
             ERROR(
                 f'index {index} is out of range for length of {length}',
                 IndexError,
             )
-        return ix + length * int(ix < 0) + right * (index != 0)
+        return ix + length * int(ix < 0) + right * int(index != 0)
 
     @staticmethod
     def get_section(File, name, start_byte=0, end_byte=-1, instance=None):
