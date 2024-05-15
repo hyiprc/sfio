@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from . import WARNING
-from .base import ReadOnly, Sectioned
+from .base import ReadOnly
 
 thermo_alias = {
     'tpcpu': 't/cpu',
@@ -281,39 +281,36 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
     update_data(self.data)
 
 
-class Lmplog(ReadOnly, Sectioned):
+class Lmplog(ReadOnly):
     """LAMMPS log file"""
 
     def scan(self):
-        self.scanned = 0
-        self.start_section('file')
-        self.scanned = self.open().seek(0, 2)
+        pass
 
-    def parse(self, section, dtype='dict'):
-        if section.name == 'file':
-            self.data = copy.deepcopy(blank_output)
+    def parse(self, section, dtype='df'):
+        self.data = copy.deepcopy(blank_output)
 
-            for line in section.f:
-                parse_stream(self, line.decode(), to_metal=False)
+        for line in self:
+            parse_stream(self, line.decode(), to_metal=False)
 
-            outkeys = ['run_type'] + self.data['key']
-            output = {k: self.data.get(k, []) for k in outkeys}
+        outkeys = ['run_type'] + self.data['key']
+        output = {k: self.data.get(k, []) for k in outkeys}
 
-            # mark each step as minimization or equilibration
-            output['run_type'] = [''] * self.data['n']
-            for s in ['min', 'eq']:
-                for i0, i1 in self.data[f'ix_{s}']:
-                    for i in range(i0, i1 + 1):
-                        output['run_type'][i] = s
+        # mark each step as minimization or equilibration
+        output['run_type'] = [''] * self.data['n']
+        for s in ['min', 'eq']:
+            for i0, i1 in self.data[f'ix_{s}']:
+                for i in range(i0, i1 + 1):
+                    output['run_type'][i] = s
 
-            # metadata
-            metadata = {'units': self.data['units']}
+        # metadata
+        metadata = {'units': self.data['units']}
 
-            # output
-            if dtype == 'dict':
-                output.update(metadata)
-                return output
-            elif dtype == 'df':
-                df = pd.DataFrame(output, columns=outkeys)
-                df.attrs.update(metadata)
-                return df
+        # output
+        if dtype == 'dict':
+            output.update(metadata)
+            return output
+        elif dtype == 'df':
+            df = pd.DataFrame(output, columns=outkeys)
+            df.attrs.update(metadata)
+            return df
