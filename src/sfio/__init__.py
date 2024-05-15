@@ -251,7 +251,7 @@ def read(f, filetype=None, **kwargs):
     """read a file, detect file format by file extension"""
     import json
 
-    from .base import Sectioned
+    from .base import Section, Sectioned
 
     self = file(f, filetype, **kwargs)
     # try to load file cache
@@ -261,6 +261,7 @@ def read(f, filetype=None, **kwargs):
         self.sections.update(cache.get('sections', {}))
         self.scanned = cache.get('scanned', 0)
         logger.info(f"skipped file scan, read from cache '{fcache.name}'")
+        # TODO: check hash of scanned part, rescan if not matching
     except Exception:
         pass
     # scan sections and write cache
@@ -273,9 +274,9 @@ def read(f, filetype=None, **kwargs):
             f", write cache '{fcache.name}'"
         )
         json.dump(self.cache, open(fcache, 'w'))
-    # parse file if no sections
+    # parse the whole file if not Sectioned
     if not issubclass(self.__class__, Sectioned):
-        return self.parse('file')
+        return self.parse(Section(self))
     return self
 
 
