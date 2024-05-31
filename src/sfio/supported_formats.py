@@ -11,4 +11,5 @@ available = {
     '.pdb': ('pdb', 'Pdb', 'ro'),  # Protein Data Bank file
     '.json': ('json', 'Json', 'rw'),  # JavaScript Object Notation
     '.yaml': ('yaml', 'Yaml', 'rw'),  # YAML Ain’t Markup Language
+    '.yml': ('yaml', 'Yaml', 'rw'),  # YAML Ain’t Markup Language
 }

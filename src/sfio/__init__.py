@@ -297,7 +297,7 @@ def write(f, data, filetype=None, overwrite=False, **kwargs):
         # supported_data = [File, Section]
         # print([dat for dat in data if dat in supported_data])
         # data = [dat for dat in data if dat in supported_data]
-        if not data:
-            WARNING('no File or Section to write')
-            return 0
+        # if not data:
+        #     WARNING('no File or Section to write')
+        #     return 0
     return FileType.write(fpath, data, **kwargs)

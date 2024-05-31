@@ -96,16 +96,17 @@ class Lmpdump(ReadWrite, MultiFrames):
             output = {}
             for line in f:
                 if line.startswith(b'ITEM: TIMESTEP'):
-                    output['timestep'] = int(f.readline())
+                    output['timestep'] = int(f.readline().split()[0])
                 elif line.startswith(b'ITEM: NUMBER OF ATOMS'):
                     output['num_atoms'] = int(f.readline())
 
         elif section.name == 'box':
             f = section.f
-            line = f.readline()
+            line = f.readline().replace(b'ITEM: BOX BOUNDS', b'')
             box = Box()
-            boundaries = line.decode().split()[-3:]
-            box['bx'], box['by'], box['bz'] = boundaries
+            boundaries = line.strip().decode().split()[:3]
+            if boundaries:
+                box['bx'], box['by'], box['bz'] = boundaries
             box['allow_tilt'] = b'xy xz yz' in line
             tilt = ' 0.0' * (not box['allow_tilt'])
             box_input = ' '.join(
