@@ -220,8 +220,13 @@ from .supported_formats import available
 
 
 def cls(name: str):
-    name = name.strip().lower()
-    info = available.get(f'.{name}', available.get(name, None))
+    name = _name = name.strip().lower()
+    while True:
+        info = available.get(f'.{_name}', available.get(_name, None))
+        has_dots = _name.find('.', 1)
+        if info is not None or not has_dots:
+            break
+        _name = name[has_dots:]
     if info is None:
         ERROR(f"unknown filetype '{name}'")
     m = __import__(f'{rootname}.{info[0]}', fromlist=[''])
