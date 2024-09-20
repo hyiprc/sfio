@@ -183,6 +183,8 @@ class Lmpdump(ReadWrite, MultiFrames):
 
             # atoms
             f.write(b"ITEM: ATOMS id")
+            df.index += 1 - min(df.index)
+            df = df.round(12)
             df.to_csv(f, sep=' ', mode='ab')
 
         f.close()
