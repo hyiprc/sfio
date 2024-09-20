@@ -89,6 +89,12 @@ class Box(AddFunc):
     )
 
     def __init__(self, inputdict: dict = {}):
+        if not isinstance(inputdict, dict):
+            raise ERROR(
+                f"Box cannot initialize from {type(inputdict)}."
+                " Also make sure df.attrs['box'] is dict type.",
+                TypeError,
+            )
         self.input = BoxInputDict(
             {
                 'x0': 0.0,
@@ -155,11 +161,12 @@ class Box(AddFunc):
         _['xz'] = xz = c * cb
         _['yz'] = yz = (b * c * ca - xy * xz) / ly
 
+        zero = 1e-12  # to avoid singular matrix
         _['v'] = np.array(
             [
-                [lx, 0.0, 0.0],  # v_a
-                [xy, ly, 0.0],  # v_b
-                [xz, yz, lz],  # v_c
+                [lx + zero, 0.0, 0.0],  # v_a
+                [xy, ly + zero, 0.0],  # v_b
+                [xz, yz, lz + zero],  # v_c
             ]
         )
 
