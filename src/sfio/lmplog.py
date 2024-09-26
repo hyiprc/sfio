@@ -181,9 +181,11 @@ def update_data(output):
     if 'step' in output:
         output[f'N{me}'] = sum(
             [
-                output['step'][n[1]] - output['step'][n[0]]
-                if n and n[1] is not None
-                else 0
+                (
+                    output['step'][n[1]] - output['step'][n[0]]
+                    if n and n[1] is not None
+                    else 0
+                )
                 for n in output[f'ix_{me}']
             ]
         )
@@ -242,9 +244,9 @@ def parse_stream(self, line, to_metal=True):  # noqa: C901
             self.data['_'] = int(0.5 * self.data['_'])
         update_data(self.data)
         ln = line.split(' Step ')[1].split(' CPU ')
-        self.data[
-            'dataline'
-        ] = f"step = {ln[0].split()[0]} cpu = {ln[1].split()[1]}"
+        step = ln[0].split()[0]
+        cpu = ln[1].split()[1]
+        self.data['dataline'] = f"step = {step} cpu = {cpu}"
         return
     elif abs(self.data['_']) == 2:
         self.data['_key'] = [s.lower() for s in line.split()]
