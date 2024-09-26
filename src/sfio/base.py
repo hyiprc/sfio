@@ -14,6 +14,7 @@ import io
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 from . import ERROR, logger
 
@@ -64,11 +65,6 @@ class File(abc.ABC):
     def parse(self, section, dtype='dict'):
         # parse section of a file
         pass
-
-    def __getattr__(self, dtype):
-        if 'file' in self.sections:
-            return self.parse(self.section('file'), dtype)
-        raise AttributeError(f"File has no attribute '{dtype}'. {self}")
 
 
 class ReadOnly(File):
@@ -146,7 +142,7 @@ class Section:
         output = self.parse(dtype)
         if output is None:
             err_msg = f"cannot cast '{self.name}' section to '{dtype}'"
-            ERROR(err_msg, AttributeError)
+            raise AttributeError(err_msg)
         return output
 
 
@@ -234,9 +230,8 @@ class Sectioned(abc.ABC):
             _sect = File.sections[name]
         except KeyError:
             allkeys = list(File.sections.keys())
-            ERROR(
-                f"section '{name}' not found, choose from {allkeys}", KeyError
-            )
+            err_msg = f"section '{name}' not found, choose from {allkeys}"
+            raise KeyError(err_msg) from None
         # add EOF to incomplete section
         if len(_sect) % 2:
             _sect = _sect.copy() + [File.scanned]
@@ -269,6 +264,31 @@ class Sectioned(abc.ABC):
                     a, b = _sect[instance]
                     instances.append(Section(File, a, b - a, name))
                 return Sections(instances)
+
+    # -----------------------------------------------
+
+    @property
+    def df(self):
+        """cast file to DataFrame with attrs"""
+        self.scan()
+        df = self.section('atoms').df
+        skip = ['atoms']
+        # append per-atom related columns to the df
+        for s in getattr(self, 'df_atoms_addcols', []):
+            try:
+                df = pd.concat([df, self.section(s).df], axis=1, copy=False)
+                skip.append(s)
+            except (KeyError, AttributeError):
+                continue
+        # add remaining sections to attrs as metadata
+        for k in self.sections:
+            if k not in skip:
+                try:
+                    # TODO: self.section(k).df not working for pdb
+                    df.attrs.update({k: self.section(k).dict})
+                except AttributeError:
+                    df.attrs.update({k: self.section(k).text})
+        return df
 
 
 class MultiFrames(Sectioned):

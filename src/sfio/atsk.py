@@ -19,6 +19,7 @@ class Atsk(ReadOnly, Sectioned):
     identifier = '0.8 Atomsk binary file'
     dtype = 'int32'
     allow_cache = False
+    df_atoms_addcols = ['ionic_shells', 'properties']
 
     def scan(self):
         with self.open() as fd:
@@ -86,10 +87,10 @@ class Atsk(ReadOnly, Sectioned):
                 # positions for core/shell model
                 shells = fort.to_float(64, b).reshape(4, -1).T
                 output = {
-                    'position': shells[:, 0],
-                    'number1': shells[:, 1],
-                    'number2': shells[:, 2],
-                    'number3': shells[:, 3],
+                    'shell_x': shells[:, 0],
+                    'shell_y': shells[:, 1],
+                    'shell_z': shells[:, 2],
+                    'shell_atomic_number': shells[:, 3],
                 }
 
             elif section.name == 'properties':

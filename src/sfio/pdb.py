@@ -63,18 +63,8 @@ class Pdb(ReadOnly, Sectioned):
 
                 self.scanned = fd.tell()
 
-        self.sections['file'] = [0]
-
     def parse(self, section, dtype='dict'):
-        output = None
-
-        if section.name == 'file':
-            return {
-                k: getattr(section.section(k), dtype)
-                for k in ['box', 'atoms', 'bonds']
-            }
-
-        elif section.name == 'box':
+        if section.name == 'box':
             box = Box()
             for line in section.f:
                 if line.startswith(b'CRYST1'):
@@ -94,7 +84,10 @@ class Pdb(ReadOnly, Sectioned):
                     # output
                     if dtype == 'obj':
                         return box
-                    output = {**box.input}
+                    elif dtype == 'dict':
+                        return {**box.input}
+                    elif dtype == 'df':
+                        return pd.Series({**box.input})
 
         elif section.name == 'atoms':
             # read column labels
@@ -127,7 +120,10 @@ class Pdb(ReadOnly, Sectioned):
                 names=col_labels,
                 dtype_backend='pyarrow',
             )
-            output = {k: atoms[k].values for k in col_labels}
+            if dtype == 'df':
+                return atoms
+            elif dtype == 'dict':
+                return {k: atoms[k].values.tolist() for k in col_labels}
 
         elif section.name == 'bonds':
             b = np.genfromtxt(
@@ -149,12 +145,7 @@ class Pdb(ReadOnly, Sectioned):
             ].reshape(-1, 2)
             bonds = np.unique(b[(b[:, 0] < b[:, 1]), :], axis=0)
             output = {'atom-1': bonds[:, 0], 'atom-2': bonds[:, 1]}
-
-        # output
-        if dtype == 'dict':
-            return output
-        elif dtype == 'df':
-            try:
+            if dtype == 'dict':
+                return {k: v.tolist() for k, v in output.items()}
+            elif dtype == 'df':
                 return pd.DataFrame(output)
-            except ValueError:
-                return pd.Series(output)

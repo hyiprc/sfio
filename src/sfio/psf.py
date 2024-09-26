@@ -64,7 +64,10 @@ class Psf(ReadOnly, Sectioned):
                 section.f, sep=r'\s+', header=0, names=col_labels.keys()
             ).astype(rfmt)
             atoms.sort_index(inplace=True)
-            output = {k: atoms[k].values for k in col_labels.keys()}
+            if dtype == 'df':
+                return atoms
+            elif dtype == 'dict':
+                return {k: atoms[k].values.tolist() for k in col_labels}
 
         elif section.name in self.sect_topo:
             # get column labels
@@ -78,15 +81,7 @@ class Psf(ReadOnly, Sectioned):
                 .dropna()
                 .astype(int)
             )
-            output = {k: topos[k].values for k in col_labels}
-
-        # output
-        if dtype == 'dict':
-            return output
-        elif dtype == 'df':
-            try:
-                df = pd.DataFrame(output)
-            except ValueError:
-                df = pd.Series(output)
-            df.attrs.update({'section': section.name})
-            return df
+            if dtype == 'df':
+                return topos
+            elif dtype == 'dict':
+                return {k: topos[k].values.tolist() for k in col_labels}
