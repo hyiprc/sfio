@@ -224,7 +224,7 @@ def cls(name: str):
     while True:
         info = available.get(f'.{_name}', available.get(_name, None))
         has_dots = _name.find('.', 1)
-        if info is not None or not has_dots:
+        if info is not None or has_dots < 0:
             break
         _name = name[has_dots:]
     if info is None:
