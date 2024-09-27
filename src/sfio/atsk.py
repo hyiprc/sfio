@@ -23,7 +23,7 @@ class Atsk(ReadOnly, Sectioned):
 
     def scan(self):
         with self.open() as fd:
-            fd.seek(0)  # rewind the file
+            self.scanned = fd.seek(0)  # rewind the file
 
             # check file header
             self.start_section('header')
