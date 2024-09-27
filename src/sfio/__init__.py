@@ -150,7 +150,7 @@ def _format_exception(e, s, tb):
     return trace_list
 
 
-def excepthook(e, s, tb, msg='uncaught exception', say=logger.error):
+def excepthook(e, s, tb, msg='raised exception', say=logger.error):
     from textwrap import indent
 
     if e is KeyboardInterrupt:
@@ -171,7 +171,7 @@ def thread_excepthook(t):
         t.exc_type,
         t.exc_value,
         t.exc_traceback,
-        msg=f"uncaught exception in {t.thread}",
+        msg=f"raised exception in {t.thread}",
     )
 
 
