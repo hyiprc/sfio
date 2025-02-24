@@ -150,12 +150,11 @@ class Box(AddFunc):
         _['cos_beta'] = cb = np.cos(_['beta'] * deg2rad)
         _['cos_gamma'] = cg = np.cos(_['gamma'] * deg2rad)
 
+        icg2, icb2 = (1.0 - cg**2.0), (1.0 - cb**2.0)
+
         _['a'] = lx
-        _['b'] = b = ly / (1.0 - cg**2.0) ** 0.5
-        _['c'] = c = (
-            lz
-            / (1 - cb**2.0 - (ca - cg * cb) ** 2.0 / (1 - cg**2.0)) ** 0.5
-        )
+        _['b'] = b = ly / icg2**0.5
+        _['c'] = c = lz / (icb2 - (ca - cg * cb) ** 2.0 / icg2) ** 0.5
 
         _['xy'] = xy = b * cg
         _['xz'] = xz = c * cb
@@ -245,21 +244,21 @@ class Box(AddFunc):
         v = np.array(v).reshape(3, 3)
         u = normalize(v)
         return {
-            'lx': v[0, 0],
-            'ly': v[1, 1],
-            'lz': v[2, 2],
-            'alpha': np.arccos(np.dot(u[1], u[2])) * rad2deg,
-            'beta': np.arccos(np.dot(u[0], u[2])) * rad2deg,
-            'gamma': np.arccos(np.dot(u[0], u[1])) * rad2deg,
+            'lx': float(v[0, 0]),
+            'ly': float(v[1, 1]),
+            'lz': float(v[2, 2]),
+            'alpha': float(np.arccos(np.dot(u[1], u[2])) * rad2deg),
+            'beta': float(np.arccos(np.dot(u[0], u[2])) * rad2deg),
+            'gamma': float(np.arccos(np.dot(u[0], u[1])) * rad2deg),
         }
 
     def _input_lmpdata(self, v: np.ndarray):
         """LMPDATA: xlo, xhi, ylo, yhi, zlo, zhi, xy, xz, yz"""
         xlo, xhi, ylo, yhi, zlo, zhi, xy, xz, yz = v
         return {
-            'x0': xlo,
-            'y0': ylo,
-            'z0': zlo,
+            'x0': float(xlo),
+            'y0': float(ylo),
+            'z0': float(zlo),
             # fmt: off
             **self._input_basis([
                 [xhi - xlo,          0,          0],  # noqa: E201, E241
@@ -279,12 +278,12 @@ class Box(AddFunc):
         ly = b * (1 - cg**2.0) ** 0.5
         lz = c * (1 - cb**2 - (ca - cg * cb) ** 2 / (1 - cg**2.0)) ** 0.5
         return {
-            'lx': a,
-            'ly': ly,
-            'lz': lz,
-            'alpha': np.arccos(ca) * rad2deg,
-            'beta': np.arccos(cb) * rad2deg,
-            'gamma': np.arccos(cg) * rad2deg,
+            'lx': float(a),
+            'ly': float(ly),
+            'lz': float(lz),
+            'alpha': float(np.arccos(ca) * rad2deg),
+            'beta': float(np.arccos(cb) * rad2deg),
+            'gamma': float(np.arccos(cg) * rad2deg),
         }
 
     def _input_lattice(self, v: np.ndarray):
