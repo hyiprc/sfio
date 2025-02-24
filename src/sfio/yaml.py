@@ -12,8 +12,8 @@ dump_kwargs = {
 import io
 
 from . import abspath, logger
+from ._json import deserialize, serialize
 from .base import ReadWrite
-from .json import deserialize, serialize
 
 
 class Yaml(ReadWrite):
