@@ -298,11 +298,4 @@ def write(f, data, filetype=None, overwrite=False, **kwargs):
             if not answer.lower() == 'y':
                 logger.info(f'Skip writing, found "{fpath}"')
                 return 0
-        # # check if there is data
-        # supported_data = [File, Section]
-        # print([dat for dat in data if dat in supported_data])
-        # data = [dat for dat in data if dat in supported_data]
-        # if not data:
-        #     WARNING('no File or Section to write')
-        #     return 0
     return FileType.write(fpath, data, **kwargs)

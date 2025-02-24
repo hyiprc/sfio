@@ -284,7 +284,6 @@ class Sectioned(abc.ABC):
         for k in self.sections:
             if k not in skip:
                 try:
-                    # TODO: self.section(k).df not working for pdb
                     df.attrs.update({k: self.section(k).dict})
                 except AttributeError:
                     df.attrs.update({k: self.section(k).text})
