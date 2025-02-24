@@ -1,13 +1,17 @@
 __all__ = ['Lmpdata']
 
+import os
+from textwrap import indent
+
+import numpy as np
 import pandas as pd
 
-from . import func, logger
-from .base import ReadOnly, Sectioned
+from . import WARNING, func, logger, rootdir, timefmt, timestamp
+from .base import ReadWrite, Sectioned
 from .box import Box
 
 
-class Lmpdata(ReadOnly, Sectioned):
+class Lmpdata(ReadWrite, Sectioned):
     """LAMMPS data file, see bottom of this file for file formats"""
 
     file_sections = [
@@ -27,12 +31,16 @@ class Lmpdata(ReadOnly, Sectioned):
     sect_basic = ['header', 'masses', 'atoms', 'velocities']
     sect_topo = ['bonds', 'angles', 'dihedrals', 'impropers']
 
+    df_atoms_addsects = ['velocities']
+
     @property
     def style(self):
-        if not hasattr(self, '_style'):
+        try:
+            return self._style
+        except AttributeError:
             line = next(self.section('atoms').f).strip()
             self.style = line.decode().split('# ')[:2][-1]
-        return self._style
+            return self._style
 
     @style.setter
     def style(self, style):
@@ -70,16 +78,16 @@ class Lmpdata(ReadOnly, Sectioned):
             return alist[:pos] + item + alist[pos:]
 
         # define atom columns
-        cols_atomic = ['type', 'x', 'y', 'z']
-        cols_molecular = insert(cols_atomic, ['mol'], 0)
-        cols_charge = insert(cols_atomic, ['q'], 1)
+        cols_atomic = ['id', 'type', 'x', 'y', 'z']
+        cols_molecular = insert(cols_atomic, ['mol'], 1)
+        cols_charge = insert(cols_atomic, ['q'], 2)
         atom_columns = {
             'atomic': cols_atomic,
-            'full': insert(cols_molecular, ['q'], 2),
+            'full': insert(cols_molecular, ['q'], 3),
             'charge': cols_charge,
             'dipole': cols_charge + ['mux', 'muy', 'muz'],
-            'sphere': insert(cols_atomic, ['diameter'], 1),
-            'ellipsoid': insert(cols_atomic, ['ellipsoidflag', 'density'], 1),
+            'sphere': insert(cols_atomic, ['diameter'], 2),
+            'ellipsoid': insert(cols_atomic, ['ellipsoidflag', 'density'], 2),
             **{
                 k: cols_molecular
                 for k in ['molecular', 'angle', 'bond', 'dihedral']
@@ -225,19 +233,19 @@ class Lmpdata(ReadOnly, Sectioned):
                 header=0,
                 names=col_labels,
             )
-            atoms.sort_index(inplace=True)
+            atoms.sort_values(by='id', inplace=True)
             output = {k: atoms[k].values for k in col_labels}
 
         elif section.name == 'velocities':
             col_labels = ['id', 'vx', 'vy', 'vz']
-            velocities = pd.read_csv(
+            vels = pd.read_csv(
                 section.f,
                 sep=r'\s+',
                 header=0,
                 names=col_labels,
             )
-            velocities.sort_index(inplace=True)
-            output = {k: velocities[k].values for k in col_labels}
+            vels.sort_values(by='id', inplace=True)
+            output = {k: vels[k].values for k in col_labels}
 
         elif section.name in self.sect_topo:
             # get column labels
@@ -250,7 +258,7 @@ class Lmpdata(ReadOnly, Sectioned):
                 header=0,
                 names=col_labels,
             )
-            topos.sort_index(inplace=True)
+            topos.sort_values(by='id', inplace=True)
             output = {k: topos[k].values for k in col_labels}
 
         # output
@@ -261,8 +269,144 @@ class Lmpdata(ReadOnly, Sectioned):
                 df = pd.DataFrame(output)
             except ValueError:
                 df = pd.Series(output)
-            df.attrs.update({'section': section.name})
+            if section.name == 'atoms':
+                df.attrs.update({'style': self.style['name']})
             return df
+
+    @classmethod
+    def write(
+        cls,
+        fpath,
+        df,
+        style=None,
+        overwrite=False,
+        header='',
+        dated=True,
+        **kwargs,
+    ):
+        if style is None:
+            default = 'full' if 'q' in df.columns else 'atomic'
+            style = df.attrs.get('style', default)
+
+        # new file
+        self = cls(fpath, mode='wb')
+        self.style = style
+        logger.info(f"Write Lammps data file {fpath}, style='{style}'")
+
+        # for df.to_csv, output array values as text
+        fmt_arrayonly = {
+            'sep': ' ',
+            'mode': 'ab',
+            'header': False,
+            'index': False,
+            'na_rep': 'nan',
+            'float_format': '%.6f',
+        }
+
+        if 'id' not in df:
+            df['id'] = df.index + 1
+
+        # TODO: establish a minimal atoms df based on this, similar to box.input
+        if 'atomic_number' in df:
+            uniq = np.sort(np.unique(df['atomic_number']))
+
+            if 'type' not in df:
+                to_type = {int(a): t for t, a in enumerate(uniq, 1)}
+                df['type'] = df['atomic_number'].map(to_type)
+
+            if 'masses' not in df.attrs:
+                ptable = pd.read_parquet(rootdir / 'data/ptable.parquet')
+                df.attrs['masses'] = {
+                    'id': list(range(1, len(uniq) + 1)),
+                    'mass': [ptable['atomic_mass'][ID - 1] for ID in uniq],
+                    'label': [ptable['symbol'][ID - 1] for ID in uniq],
+                }
+
+        # ...............................................
+        f = self.open()
+
+        # header
+        date = f"{timefmt(timestamp())}\n" * dated
+        header = f"LAMMPS data file.\n{date}{header}"
+        f.write(indent(header, '# ', lambda line: True).encode())
+        f.write(b'\n')
+
+        # count atoms, bonds, angles, dihedrals, impropers
+        sect_topo = [s for s in cls.sect_topo if s in df.attrs]
+        sections = ['atoms', *sect_topo]
+
+        for sect in sections:
+            _df = df.attrs.get(sect, df)
+            count = _df['id'].shape[0]
+            line = f"{count} {sect}"
+            logger.info(line)
+            f.write(f" {line}\n".encode())
+
+        for sect in sections:
+            _df = df.attrs.get(sect, df)
+            count = pd.unique(_df['type']).size
+            line = f"{count} {sect[:-1]} types"
+            logger.info(line)
+            f.write(f" {line}\n".encode())
+
+        # box
+        box = Box(df.attrs['box'])
+        logger.info(f"writing box: {box.input}")
+        _ = box.output
+        ortho = '#' * (_['xy'] + _['xz'] + _['yz'] == 0)
+        ortho = kwargs.get('ortho', ortho)
+        f.write(
+            (
+                f" {_['xlo']:.7f} {_['xhi']:.7f}  xlo xhi\n"
+                f" {_['ylo']:.7f} {_['yhi']:.7f}  ylo yhi\n"
+                f" {_['zlo']:.7f} {_['zhi']:.7f}  zlo zhi\n"
+                f"{ortho} {_['xy']:.7f} {_['xz']:.7f} {_['yz']:.7f}  xy xz yz\n"
+            ).encode()
+        )
+
+        # masses
+        masses = pd.DataFrame(df.attrs['masses'])
+        logger.info(f"writing masses: {list(masses.columns)}")
+        fmt_masses = {'mass': '{:.6g}', 'label': ' # {}'}
+        f.write(b"\n Masses\n\n")
+        f.write(
+            masses.style.format(fmt_masses, na_rep='null')
+            .hide(axis='columns')
+            .hide(axis='index')
+            .to_string()
+            .encode()
+        )
+
+        # atoms
+        atom_cols = self.style['atoms_cols']
+        missing = [c for c in atom_cols if c not in df.columns]
+        if missing:
+            WARNING(f"missing columns in 'atoms' section: {missing}")
+        empty = pd.DataFrame(columns=missing)
+        atoms = pd.concat((df, empty), axis=1)[atom_cols]
+        logger.info(f"writing atoms: {list(atoms.columns)}")
+        f.write(f"\n Atoms  # {self.style['name']}\n\n".encode())
+        atoms.to_csv(f, **fmt_arrayonly)
+
+        # bonds, angles, dihedrals, impropers
+        for sect in sect_topo:
+            f.write(f"\n {sect.capitalize()}\n\n".encode())
+            topo = pd.DataFrame(df.attrs[sect])
+            logger.info(f"writing {sect}: {list(topo.columns)}")
+            topo.to_csv(f, **fmt_arrayonly)
+
+        # velocities
+        vel_cols = [s for s in ['vx', 'vy', 'vz'] if s in df.columns]
+        if vel_cols:
+            vels = df[['id', *vel_cols]]
+            logger.info(f"writing velocities: {list(vels.columns)}")
+            f.write("\n Velocities\n\n".encode())
+            vels.to_csv(f, **fmt_arrayonly)
+
+        f.close()
+        # ...............................................
+
+        return os.stat(fpath).st_size
 
 
 """

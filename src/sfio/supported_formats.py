@@ -1,6 +1,6 @@
 available = {
     # 'name': ('module','class','mode'),
-    'lmpdata': ('lmpdata', 'Lmpdata', 'ro'),  # LAMMPS data file
+    'lmpdata': ('lmpdata', 'Lmpdata', 'rw'),  # LAMMPS data file
     'lmpdump': ('lmpdump', 'Lmpdump', 'rw'),  # LAMMPS dump file
     'lmplog': ('lmplog', 'Lmplog', 'ro'),  # LAMMPS log file
     '.lmp': ('lmpdata', 'Lmpdata', 'ro'),  # LAMMPS data file
