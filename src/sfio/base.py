@@ -273,8 +273,8 @@ class Sectioned(abc.ABC):
         self.scan()
         df = self.section('atoms').df
         skip = ['atoms']
-        # append per-atom related columns to the df
-        for s in getattr(self, 'df_atoms_addcols', []):
+        # append per-atom related sections to the df
+        for s in getattr(self, 'df_atoms_addsects', []):
             try:
                 df = pd.concat([df, self.section(s).df], axis=1, copy=False)
                 skip.append(s)

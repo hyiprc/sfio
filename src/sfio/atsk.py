@@ -19,7 +19,7 @@ class Atsk(ReadOnly, Sectioned):
     identifier = '0.8 Atomsk binary file'
     dtype = 'int32'
     allow_cache = False
-    df_atoms_addcols = ['ionic_shells', 'properties']
+    df_atoms_addsects = ['ionic_shells', 'properties']
 
     def scan(self):
         with self.open() as fd:
