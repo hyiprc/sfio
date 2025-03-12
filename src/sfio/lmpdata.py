@@ -345,7 +345,15 @@ class Lmpdata(ReadWrite, Sectioned):
         for sect in sections:
             _df = df.attrs.get(sect, df)
             count = pd.unique(_df['type']).size
-            line = f"{count} {sect[:-1]} types"
+            # compare count with number from header
+            header = _df.attrs.get('header', {})
+            count0 = header.get(f"num_{sect[:-1]}_types", -1)
+            if count != count0:
+                logger.warning(
+                    f"actual number of {sect[:-1]} types ({count}) does "
+                    f"not match header ({count0}), will use the larger number"
+                )
+            line = f"{max(count, count0)} {sect[:-1]} types"
             logger.info(line)
             f.write(f" {line}\n".encode())
 
